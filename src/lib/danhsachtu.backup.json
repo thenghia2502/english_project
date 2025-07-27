@@ -1,0 +1,25 @@
+[
+  {
+    "id": "56ac8013-487b-4257-80e1-f00b44b18ea1",
+    "name": "bai10",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "unit-1",
+      "unit-5",
+      "unit-9",
+      "unit-13",
+      "unit-17"
+    ]
+  },
+  {
+    "id": "09658f32-3afa-47d3-b835-743c8cca3c56",
+    "name": "bai2",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Introducing yourself",
+      "Countries"
+    ]
+  }
+]

@@ -1,0 +1,76 @@
+{
+    "w1": [
+        {
+            "id": "w2l2",
+            "word": "homes",
+            "meaning": "những ngôi nhà",
+            "ipa": "/həʊmz/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": "" 
+        },
+        {
+            "id": "w3l2",
+            "word": "homeless",
+            "meaning": "vô gia cư",
+            "ipa": "/ˈhəʊmləs/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w4l2",
+            "word": "homely",
+            "meaning": "giản dị, mộc mạc (BrE); xấu xí (AmE)",
+            "ipa": "/ˈhəʊmli/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w5l2",
+            "word": "homeland",
+            "meaning": "quê hương",
+            "ipa": "/ˈhəʊmlænd/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w6l2",
+            "word": "homework",
+            "meaning": "bài tập về nhà",
+            "ipa": "/ˈhəʊmwɜːk/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w7l2",
+            "word": "homemaker",
+            "meaning": "người nội trợ",
+            "ipa": "/ˈhəʊmmeɪkər/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w8l2",
+            "word": "homecoming",
+            "meaning": "trở về nhà",
+            "ipa": "/ˈhəʊmkʌmɪŋ/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w9l2",
+            "word": "homepage",
+            "meaning": "trang chủ",
+            "ipa": "/ˈhəʊmpeɪdʒ/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        },
+        {
+            "id": "w10l2",
+            "word": "homesick",
+            "meaning": "nhớ nhà",
+            "ipa": "/ˈhəʊmsɪk/",
+            "selected": false,
+            "done": false, "popularity": 2, "belong": ""
+        }
+    ]
+}
