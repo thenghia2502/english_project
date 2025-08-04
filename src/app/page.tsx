@@ -1,5 +1,4 @@
-import AudioButton from "./audio-play";
-import VocabTrainer from "./vocab-trainerV2";
+import VocabTrainer from "./vocab-trainerV3";
 
 export default function Home() {
   return (

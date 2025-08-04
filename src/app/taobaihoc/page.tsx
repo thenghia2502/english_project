@@ -26,8 +26,10 @@ import { CSS } from '@dnd-kit/utilities'
 import clsx from "clsx"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import React from "react"
-// import data2 from "./data2.json"
 import { Lesson } from "../api/lessons/route"
+import NoCopyWrapper from "@/components/no-copy-wrapper"
+import Loading from "@/components/ui/loading"
+import TaoBaiHocError from "@/components/ui/tao-bai-hoc-error"
 
 interface Word {
   "id": string
@@ -50,7 +52,6 @@ interface CourseWord {
   readsPerRound: string
   progress: string
 }
-
 
 // interface CourseState {
 //   courseId: string;
@@ -110,12 +111,23 @@ export default function TaoKhoaHocPage() {
   }, []);
 
   useEffect(() => {
+    
     const fetchLessons = async () => {
       try {
         setLoading(true)
         setError(null)
+
+        const searchParams = new URLSearchParams(window.location.search);
+        const id = searchParams.get("id");
         
-        const res = await fetch("/api/lessons")
+        // If no ID is provided, set a special state
+        if (!id) {
+          setLoading(false)
+          setError("NO_LESSON_SELECTED")
+          return
+        }
+
+        const res = await fetch(`/api/lessons/${id}`)
         if (!res.ok) throw new Error('Failed to fetch lessons')
         const data = await res.json()
 
@@ -229,8 +241,6 @@ export default function TaoKhoaHocPage() {
 
   // Handle checkbox selection
   const handleWordSelection = (lessonId: string, wordId: string) => {
-    console.log('id: ', lessonId)
-    console.log('wid: ', wordId)
     setLessonsFiltered((prevLessons) =>
       prevLessons.map((lesson) =>
         lesson.id === lessonId
@@ -253,7 +263,6 @@ export default function TaoKhoaHocPage() {
     )
   }
   const handleWordSelection2 = (dataId: string, wordId: string) => {
-    console.log('dataid: ', dataId)
     setData((prevData) => {
       const updatedList = prevData[dataId].map((word) =>
         word.id === wordId ? { ...word, selected: !word.selected } : word
@@ -266,7 +275,6 @@ export default function TaoKhoaHocPage() {
     });
 
   };
-
 
   // Transfer selected words to course builder
   const transferSelectedWords = () => {
@@ -321,6 +329,7 @@ export default function TaoKhoaHocPage() {
   const updateCourseWord = (wordId: string, field: keyof CourseWord, value: string) => {
     setCourseWords((prevWords) => prevWords.map((word) => (word.wordId === wordId ? { ...word, [field]: value } : word)))
   }
+
   const updateMaxReadsCourseWord = (wordId: string, value: string) => {
     const maxReads = Number(value);
     const showIpa = Math.floor(maxReads * 0.6);
@@ -375,8 +384,6 @@ export default function TaoKhoaHocPage() {
       }
       return newData
     })
-
-    console.log('đã xóa id: ', wordId)
   }
 
   const createCourse = async () => {
@@ -390,11 +397,16 @@ export default function TaoKhoaHocPage() {
       return
     }
 
+    // Get lesson list ID from URL
+    const searchParams = new URLSearchParams(window.location.search);
+    const lessonListId = searchParams.get("id");
+
     const payload = {
       name: courseName.trim(),
       estimatedTime: calculateEstimatedTime(),
       words: courseWords,
-      done: "0"
+      done: "0",
+      lessonListId: lessonListId // Thêm ID danh sách bài học
     }
 
     try {
@@ -430,7 +442,7 @@ export default function TaoKhoaHocPage() {
       setLessons(lessons)
 
       // Navigate
-      router.push("/quanlykhoahoc")
+      router.push("/quanlybaihoc")
     } catch (error) {
       console.error("Lỗi khi tạo khóa học:", error)
       alert("❌ Đã xảy ra lỗi khi gửi dữ liệu đến server.")
@@ -622,13 +634,14 @@ export default function TaoKhoaHocPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <NoCopyWrapper>
+      <div className="min-h-screen bg-gray-100">
       {/* Fixed Top Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">Tạo bài học</h1>
-            <Button onClick={() => router.push("/quanlykhoahoc")} variant="outline">
+            <Button onClick={() => router.push("/quanlybaihoc")} variant="outline">
               Quản lý bài học
             </Button>
           </div>
@@ -637,31 +650,78 @@ export default function TaoKhoaHocPage() {
 
       {/* Loading State */}
       {loading && (
-        <div className="pt-16 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
-          </div>
-        </div>
+        <Loading 
+          variant="skeleton" 
+          skeletonType="tao-bai-hoc"
+        />
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <div className="pt-16 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Có lỗi xảy ra</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
-              Thử lại
-            </Button>
-          </div>
-        </div>
+        <>
+          {error === "NO_LESSON_SELECTED" ? (
+            <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+              <div className="w-full max-w-md">
+                <Card className="bg-white shadow-lg border border-blue-200">
+                  <CardHeader className="text-center pb-4">
+                    <div className="flex justify-center mb-4">
+                      <div className="bg-blue-100 p-4 rounded-full">
+                        <div className="text-4xl">📚</div>
+                      </div>
+                    </div>
+                    <CardTitle className="text-xl font-bold text-gray-900 mb-2">
+                      Chưa chọn danh sách bài học
+                    </CardTitle>
+                    <p className="text-gray-600 text-base">
+                      Bạn cần chọn một danh sách bài học trước khi tạo bài học mới
+                    </p>
+                  </CardHeader>
+                  
+                  <CardContent className="pt-0">
+                    <div className="text-center p-4 bg-blue-50 rounded-lg mb-6">
+                      <div className="text-2xl mb-2">🎯</div>
+                      <h4 className="font-medium text-blue-900 mb-1">Hướng dẫn</h4>
+                      <p className="text-sm text-blue-700">
+                        Hãy vào trang quản lý giáo trình để chọn danh sách bài học mà bạn muốn tạo bài học từ đó
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <Button 
+                        onClick={() => router.push("/quanlygiaotrinh")} 
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Đi đến Quản lý giáo trình
+                      </Button>
+                      
+                      <Button 
+                        onClick={() => router.push("/")} 
+                        variant="outline"
+                        className="w-full border-gray-300"
+                      >
+                        Về trang chủ
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          ) : (
+            <TaoBaiHocError
+              title="Không thể tải dữ liệu bài học"
+              message="Đã xảy ra lỗi khi tải danh sách từ vựng và khóa học. Vui lòng thử lại."
+              errorDetails={error || "Simulated error for demo purposes"}
+              onRetry={() => window.location.reload()}
+              onGoBack={() => router.push("/quanlybaihoc")}
+              onGoHome={() => router.push("/")}
+            />
+          )}
+        </>
       )}
 
       {/* Main Content - only show when not loading and no error */}
       {!loading && !error && (
-      <div className="pt-16 h-screen flex">
+      <div className="pt-20 h-screen flex">
         {/* Left Panel - Word Selection */}
         <div className="w-1/3 bg-gray-100 border-r border-gray-300 overflow-y-auto">
           <div className="p-6">
@@ -690,7 +750,7 @@ export default function TaoKhoaHocPage() {
                     </div>
                     {lessons.map((lesson) => (
                       <div key={lesson.id} className="space-x-1 flex items-center">
-                        <label htmlFor={`bai${lesson.id}`}>Bài {lesson.id}</label>
+                        <label htmlFor={`bai${lesson.id}`}>{lesson.title}</label>
                         <Checkbox
                           id={`bai${lesson.id}`}
                           checked={
@@ -844,11 +904,11 @@ export default function TaoKhoaHocPage() {
 
 
                           {wordLevel2 && wordLevel2.words.length > 3 && (
-                            <TableRow>
-                              <TableCell colSpan={5}>
+                            <TableRow >
+                              <TableCell colSpan={5} className="text-end">
                                 <Button
                                   onClick={() => toggleExpand(word.id)}
-                                  className="text-blue-600 text-sm hover:underline"
+                                  className="text-blue-600 text-sm hover:underline cursor-pointer"
                                 >
                                   {expandedWordIds[word.id] ? "Thu gọn" : "Mở rộng"}
                                 </Button>
@@ -997,7 +1057,8 @@ export default function TaoKhoaHocPage() {
         </div>
       </div>
       )}
-    </div>
+      </div>
+    </NoCopyWrapper>
   )
 }
 

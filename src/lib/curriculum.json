@@ -3,6 +3,7 @@
         "id": "curriculum-1",
         "title": "English for Everyone",
         "description": "A beginner's guide to English language concepts and skills.",
+        "createdAt": "2023-10-01T12:00:00Z",
         "levels": [
             {
                 "id": "level-1",
@@ -506,6 +507,7 @@
         "id": "curriculum-2",
         "title": "English for Academic Study: Extended Writing & Research Skills",
         "description": "Advanced English skills for professional settings.",
+        "createdAt": "2023-10-01T12:00:00Z",
         "levels": [
             {
                 "id": "level-1",

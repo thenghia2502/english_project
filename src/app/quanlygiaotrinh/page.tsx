@@ -5,19 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { BookOpen, Trash2, GraduationCap, ChevronLeft, ChevronRight, Search, Edit, Plus } from "lucide-react"
+import { BookOpen, Trash2, GraduationCap, ChevronLeft, ChevronRight, Search, Play, Pen } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { Level, Curriculum, LessonList } from "@/lib/types"
+import Loading from "@/components/ui/loading"
+import ErrorState from "@/components/ui/error-state"
 export default function QuanLyGiaoTrinh() {
     const [curriculums, setCurriculums] = useState<Curriculum[]>([])
     const [lessonLists, setLessonLists] = useState<LessonList[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [carouselIndices, setCarouselIndices] = useState<{[key: string]: number}>({})
+    const [carouselIndices, setCarouselIndices] = useState<{ [key: string]: number }>({})
     const [curriculumCarouselIndex, setCurriculumCarouselIndex] = useState(0)
     const [searchQuery, setSearchQuery] = useState("")
     const [lessonSearchQuery, setLessonSearchQuery] = useState("")
-    const [curriculumSearchQueries, setCurriculumSearchQueries] = useState<{[key: string]: string}>({})
+    const [curriculumSearchQueries, setCurriculumSearchQueries] = useState<{ [key: string]: string }>({})
     const router = useRouter()
 
     /**
@@ -31,30 +33,30 @@ export default function QuanLyGiaoTrinh() {
             try {
                 setIsLoading(true)
                 setError(null)
-                
+
                 // Fetch curriculums and lesson lists in parallel
                 const [curriculumsRes, lessonListsRes] = await Promise.all([
                     fetch("/api/curriculum"),
                     fetch("/api/danhsachtu") // Lấy dữ liệu với names để hiển thị
                 ])
-                
+
                 if (!curriculumsRes.ok || !lessonListsRes.ok) {
                     throw new Error(`HTTP error! status: ${curriculumsRes.status} or ${lessonListsRes.status}`)
                 }
-                
+
                 const [curriculumsData, lessonListsData] = await Promise.all([
                     curriculumsRes.json(),
                     lessonListsRes.json()
                 ])
-                
+
                 // Validate data structure
                 if (!Array.isArray(curriculumsData) || !Array.isArray(lessonListsData)) {
                     throw new Error("Invalid data format received from API")
                 }
-                
+
                 // Fetch detailed data for each curriculum using curriculum/[id] API
                 const detailedCurriculums: Curriculum[] = []
-                
+
                 for (const curriculum of curriculumsData) {
                     try {
                         const detailRes = await fetch(`/api/curriculum/${curriculum.id}`)
@@ -65,7 +67,7 @@ export default function QuanLyGiaoTrinh() {
                                 title: curriculum.title,
                                 levels: detailData.levels || [],
                                 description: detailData.description || "",
-                                createdAt: new Date().toISOString()
+                                createdAt: detailData.createdAt || new Date().toISOString()
                             })
                         } else {
                             // If detail fetch fails, return basic curriculum data
@@ -88,7 +90,7 @@ export default function QuanLyGiaoTrinh() {
                         })
                     }
                 }
-                
+
                 setCurriculums(detailedCurriculums)
                 setLessonLists(lessonListsData)
             } catch {
@@ -106,9 +108,19 @@ export default function QuanLyGiaoTrinh() {
      * @param dateString - Chuỗi ngày tháng ISO
      * @returns Chuỗi ngày tháng định dạng dd/mm/yyyy hoặc "Không rõ"
      */
-    const formatDate = (dateString?: string) => {
+    function formatDate(dateString: string | Date) {
         if (!dateString) return "Không rõ"
-        return new Date(dateString).toLocaleDateString('vi-VN')
+        const date = new Date(dateString);
+        const options: Intl.DateTimeFormatOptions = {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+        };
+        return date.toLocaleDateString('vi-VN', options);
     }
 
     /**
@@ -118,7 +130,7 @@ export default function QuanLyGiaoTrinh() {
      */
     const deleteCurriculum = async (curriculumId: string) => {
         if (!confirm("Bạn có chắc chắn muốn xóa giáo trình này?")) return
-        
+
         try {
             // TODO: Implement delete API
             const updatedCurriculums = curriculums.filter((curriculum) => curriculum.id !== curriculumId)
@@ -161,12 +173,12 @@ export default function QuanLyGiaoTrinh() {
      */
     const deleteLessonList = async (lessonId: string) => {
         if (!confirm("Bạn có chắc chắn muốn xóa danh sách bài học này?")) return
-        
+
         try {
             const res = await fetch(`/api/danhsachtu?id=${lessonId}`, {
                 method: 'DELETE'
             })
-            
+
             if (res.ok) {
                 setLessonLists(prev => prev.filter(lesson => lesson.id !== lessonId))
                 alert("Xóa danh sách bài học thành công!")
@@ -207,13 +219,13 @@ export default function QuanLyGiaoTrinh() {
      */
     const getLessonsByCurriculumAndSearch = (curriculumId: string, searchQuery?: string) => {
         let lessons = lessonLists.filter(lesson => lesson.id_curriculum === curriculumId)
-        
+
         if (searchQuery && searchQuery.trim()) {
-            lessons = lessons.filter(lesson => 
+            lessons = lessons.filter(lesson =>
                 lesson.name.toLowerCase().includes(searchQuery.toLowerCase())
             )
         }
-        
+
         return lessons
     }
 
@@ -236,7 +248,7 @@ export default function QuanLyGiaoTrinh() {
      */
     const getFilteredCurriculums = (query: string) => {
         if (!query.trim()) return curriculums
-        return curriculums.filter(curriculum => 
+        return curriculums.filter(curriculum =>
             curriculum.title.toLowerCase().includes(query.toLowerCase())
         )
     }
@@ -333,25 +345,21 @@ export default function QuanLyGiaoTrinh() {
 
             {/* Loading State */}
             {isLoading && (
-                <div className="pt-20 flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="mt-4 text-gray-600">Đang tải danh sách giáo trình...</p>
-                    </div>
-                </div>
+                <Loading
+                    variant="skeleton"
+                    skeletonType="quan-ly-giao-trinh"
+                />
             )}
 
             {/* Error State */}
             {error && !isLoading && (
-                <div className="pt-20 flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <div className="text-red-500 text-6xl mb-4">⚠️</div>
-                        <h2 className="text-xl font-semibold text-gray-900 mb-2">Có lỗi xảy ra</h2>
-                        <p className="text-gray-600 mb-4">{error}</p>
-                        <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
-                            Thử lại
-                        </Button>
-                    </div>
+                <div className="pt-20">
+                    <ErrorState
+                        title="Có lỗi xảy ra"
+                        message={error}
+                        onRetry={() => window.location.reload()}
+                        className="min-h-[calc(100vh-5rem)]"
+                    />
                 </div>
             )}
 
@@ -364,7 +372,7 @@ export default function QuanLyGiaoTrinh() {
                                 <h2 className="text-2xl font-semibold mb-2">Danh sách giáo trình gốc ({getFilteredCurriculums(searchQuery).length})</h2>
                                 <p className="text-gray-600">Quản lý các giáo trình và chương trình học</p>
                             </div>
-                            
+
                             {/* Search Bar */}
                             <div className="relative w-80">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -387,14 +395,14 @@ export default function QuanLyGiaoTrinh() {
                                         {searchQuery.trim() ? "Không tìm thấy giáo trình nào" : "Chưa có giáo trình nào"}
                                     </h3>
                                     <p className="text-gray-600 mb-6">
-                                        {searchQuery.trim() 
+                                        {searchQuery.trim()
                                             ? `Không có giáo trình nào khớp với từ khóa "${searchQuery}"`
                                             : "Bắt đầu bằng cách tạo giáo trình đầu tiên của bạn"
                                         }
                                     </p>
                                     {!searchQuery.trim() && (
-                                        <Button 
-                                            onClick={() => router.push("/taodanhsachbaihoc")} 
+                                        <Button
+                                            onClick={() => router.push("/taodanhsachbaihoc")}
                                             className="bg-blue-600 hover:bg-blue-700 text-white"
                                         >
                                             Tạo giáo trình mới
@@ -406,9 +414,9 @@ export default function QuanLyGiaoTrinh() {
                             /* Curriculum Carousel */
                             <div className="relative">
                                 <div className="overflow-hidden">
-                                    <div 
+                                    <div
                                         className="flex transition-transform duration-300 ease-in-out"
-                                        style={{ 
+                                        style={{
                                             transform: `translateX(-${Math.floor(curriculumCarouselIndex / 3) * 100}%)`
                                         }}
                                     >
@@ -416,116 +424,116 @@ export default function QuanLyGiaoTrinh() {
                                         {(() => {
                                             const filteredCurriculums = getFilteredCurriculums(searchQuery)
                                             return Array.from({ length: Math.ceil(filteredCurriculums.length / 3) }).map((_, pageIndex) => (
-                                                <div 
+                                                <div
                                                     key={pageIndex}
                                                     className="w-full flex-shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                                                 >
                                                     {filteredCurriculums.slice(pageIndex * 3, (pageIndex + 1) * 3).map((curriculum) => (
-                                                    <Card
-                                                        key={curriculum.id}
-                                                        className="bg-white shadow-sm border border-gray-200 hover:shadow-md hover:bg-blue-50 transition-all cursor-pointer"
-                                                    >
-                                                        <CardHeader className="pb-4">
-                                                            <div className="flex items-start justify-between">
-                                                                <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
-                                                                    {curriculum.title}
-                                                                </CardTitle>
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation()
-                                                                        deleteCurriculum(curriculum.id)
-                                                                    }}
-                                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </CardHeader>
-                                                        <CardContent className="pt-0">
-                                                            <div className="space-y-4">
-                                                                {/* Curriculum Stats */}
-                                                                <div className="flex items-center gap-4 text-sm text-gray-600">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <GraduationCap className="w-4 h-4" />
-                                                                        <span>{curriculum.levels?.length || 0} trình độ</span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <BookOpen className="w-4 h-4" />
-                                                                        <span>{getTotalUnits(curriculum.levels)} bài học</span>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span>~{getTotalWords(curriculum.levels)} từ</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Description */}
-                                                                {curriculum.description && (
-                                                                    <p className="text-sm text-gray-600 line-clamp-2">
-                                                                        {curriculum.description}
-                                                                    </p>
-                                                                )}
-
-                                                                {/* Levels Preview */}
-                                                                <div className="space-y-2">
-                                                                    <p className="text-sm font-medium text-gray-700">Các trình độ:</p>
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {curriculum.levels && curriculum.levels.length > 0 ? (
-                                                                            <>
-                                                                                {curriculum.levels.slice(0, 3).map((level) => (
-                                                                                    <Badge 
-                                                                                        key={level.id} 
-                                                                                        variant="outline" 
-                                                                                        className="text-xs"
-                                                                                        title={`${level.name} - ${level.units?.length || 0} bài học`}
-                                                                                    >
-                                                                                        {level.name} ({level.units?.length || 0})
-                                                                                    </Badge>
-                                                                                ))}
-                                                                                {curriculum.levels.length > 3 && (
-                                                                                    <Badge variant="outline" className="text-xs">
-                                                                                        +{curriculum.levels.length - 3} trình độ nữa
-                                                                                    </Badge>
-                                                                                )}
-                                                                            </>
-                                                                        ) : (
-                                                                            <Badge variant="outline" className="text-xs text-gray-400">
-                                                                                Chưa có trình độ nào
-                                                                            </Badge>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Created Date */}
-                                                                <div className="flex items-center justify-between text-sm">
-                                                                    <span className="text-gray-600">Tạo lúc:</span>
-                                                                    <span className="text-gray-500">{formatDate(curriculum.createdAt)}</span>
-                                                                </div>
-
-                                                                {/* Action Buttons */}
-                                                                <div className="flex items-center gap-2 pt-2">
+                                                        <Card
+                                                            key={curriculum.id}
+                                                            className="bg-white shadow-sm border border-gray-200 hover:shadow-md hover:bg-blue-50 transition-all cursor-pointer"
+                                                        >
+                                                            <CardHeader className="pb-4">
+                                                                <div className="flex items-start justify-between">
+                                                                    <CardTitle className="h-[3rem] text-lg font-semibold text-gray-900 line-clamp-2">
+                                                                        {curriculum.title}
+                                                                    </CardTitle>
                                                                     <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation()
-                                                                            router.push(`/taodanhsachbaihoc?curriculum=${curriculum.id}`)
+                                                                            deleteCurriculum(curriculum.id)
                                                                         }}
-                                                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                                                                        size="sm"
+                                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
                                                                     >
-                                                                        <BookOpen className="w-4 h-4 mr-2" />
-                                                                        Tạo danh sách bài học
+                                                                        <Trash2 className="w-4 h-4" />
                                                                     </Button>
                                                                 </div>
-                                                            </div>
-                                                        </CardContent>
-                                                    </Card>
-                                                ))}
-                                            </div>
-                                        ))
-                                    })()}
+                                                            </CardHeader>
+                                                            <CardContent className="pt-0">
+                                                                <div className="space-y-4">
+                                                                    {/* Curriculum Stats */}
+                                                                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <GraduationCap className="w-4 h-4" />
+                                                                            <span>{curriculum.levels?.length || 0} trình độ</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <BookOpen className="w-4 h-4" />
+                                                                            <span>{getTotalUnits(curriculum.levels)} bài học</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span>~{getTotalWords(curriculum.levels)} từ</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Description */}
+                                                                    {curriculum.description && (
+                                                                        <p className="text-sm text-gray-600 line-clamp-2">
+                                                                            {curriculum.description}
+                                                                        </p>
+                                                                    )}
+
+                                                                    {/* Levels Preview */}
+                                                                    <div className="space-y-2">
+                                                                        <p className="text-sm font-medium text-gray-700">Các trình độ:</p>
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {curriculum.levels && curriculum.levels.length > 0 ? (
+                                                                                <>
+                                                                                    {curriculum.levels.slice(0, 3).map((level) => (
+                                                                                        <Badge
+                                                                                            key={level.id}
+                                                                                            variant="outline"
+                                                                                            className="text-xs"
+                                                                                            title={`${level.name} - ${level.units?.length || 0} bài học`}
+                                                                                        >
+                                                                                            {level.name} ({level.units?.length || 0})
+                                                                                        </Badge>
+                                                                                    ))}
+                                                                                    {curriculum.levels.length > 3 && (
+                                                                                        <Badge variant="outline" className="text-xs">
+                                                                                            +{curriculum.levels.length - 3} trình độ nữa
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                </>
+                                                                            ) : (
+                                                                                <Badge variant="outline" className="text-xs text-gray-400">
+                                                                                    Chưa có trình độ nào
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Created Date */}
+                                                                    <div className="flex items-center justify-between text-sm">
+                                                                        <span className="text-gray-600">Tạo lúc:</span>
+                                                                        <span className="text-gray-500">{formatDate(curriculum.createdAt || new Date().toISOString())}</span>
+                                                                    </div>
+
+                                                                    {/* Action Buttons */}
+                                                                    <div className="flex items-center gap-2 pt-2">
+                                                                        <Button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation()
+                                                                                router.push(`/taodanhsachbaihoc?curriculum=${curriculum.id}`)
+                                                                            }}
+                                                                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                                                                            size="sm"
+                                                                        >
+                                                                            <BookOpen className="w-4 h-4 mr-2" />
+                                                                            Tạo danh sách bài học
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))}
+                                                </div>
+                                            ))
+                                        })()}
+                                    </div>
                                 </div>
-                            </div>
 
                                 {/* Navigation Buttons */}
                                 {(() => {
@@ -567,11 +575,10 @@ export default function QuanLyGiaoTrinh() {
                                             {Array.from({ length: Math.ceil(filteredCurriculums.length / 3) }).map((_, index) => (
                                                 <button
                                                     key={index}
-                                                    className={`w-2 h-2 rounded-full transition-colors ${
-                                                        Math.floor(curriculumCarouselIndex / 3) === index
-                                                            ? 'bg-blue-600'
-                                                            : 'bg-gray-300'
-                                                    }`}
+                                                    className={`w-2 h-2 rounded-full transition-colors ${Math.floor(curriculumCarouselIndex / 3) === index
+                                                        ? 'bg-blue-600'
+                                                        : 'bg-gray-300'
+                                                        }`}
                                                     onClick={() => setCurriculumCarouselIndex(index * 3)}
                                                 />
                                             ))}
@@ -586,15 +593,15 @@ export default function QuanLyGiaoTrinh() {
                             <div>
                                 <h2 className="text-2xl font-semibold mb-2">Các danh sách bài học ({
                                     curriculums.reduce((total, curriculum) => {
-                                        const effectiveSearchQuery = lessonSearchQuery.trim() 
-                                            ? lessonSearchQuery 
+                                        const effectiveSearchQuery = lessonSearchQuery.trim()
+                                            ? lessonSearchQuery
                                             : getCurriculumSearchQuery(curriculum.id)
                                         return total + getLessonsByCurriculumAndSearch(curriculum.id, effectiveSearchQuery).length
                                     }, 0)
                                 })</h2>
                                 <p className="text-gray-600">Quản lý các danh sách bài học được tạo từ giáo trình</p>
                             </div>
-                            
+
                             {/* Global Lesson Search Bar */}
                             <div className="relative w-80">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -617,15 +624,15 @@ export default function QuanLyGiaoTrinh() {
                         {/* Group lessons by curriculum */}
                         {curriculums.map((curriculum) => {
                             // Use global search if it exists, otherwise use individual curriculum search
-                            const effectiveSearchQuery = lessonSearchQuery.trim() 
-                                ? lessonSearchQuery 
+                            const effectiveSearchQuery = lessonSearchQuery.trim()
+                                ? lessonSearchQuery
                                 : getCurriculumSearchQuery(curriculum.id)
-                            
+
                             const curriculumLessons = getLessonsByCurriculumAndSearch(curriculum.id, effectiveSearchQuery)
-                            
+
                             // Show curriculum if it has lessons OR if there's an active search for this curriculum
                             if (curriculumLessons.length === 0 && !effectiveSearchQuery.trim()) return null
-                            
+
                             return (
                                 <div key={curriculum.id} className="mb-8">
                                     <div className="mb-4 flex items-center justify-between">
@@ -642,7 +649,7 @@ export default function QuanLyGiaoTrinh() {
                                                 )}
                                             </p>
                                         </div>
-                                        
+
                                         {/* Individual Curriculum Search Bar - Only show if global search is not active */}
                                         {!lessonSearchQuery.trim() && (
                                             <div className="relative w-64">
@@ -657,7 +664,7 @@ export default function QuanLyGiaoTrinh() {
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     {/* Show empty state for individual curriculum search */}
                                     {curriculumLessons.length === 0 && effectiveSearchQuery.trim() ? (
                                         <div className="relative">
@@ -674,179 +681,187 @@ export default function QuanLyGiaoTrinh() {
                                             </Card>
                                         </div>
                                     ) : (
-                                    <div className="relative">
-                                        {/* Carousel Container */}
-                                        <div className="overflow-hidden">
-                                            <div 
-                                                className="flex transition-transform duration-300 ease-in-out"
-                                                style={{ 
-                                                    transform: `translateX(-${Math.floor(getCarouselIndex(curriculum.id) / 8) * 100}%)`
-                                                }}
-                                            >
-                                                {/* Create pages of 8 items (2 rows x 4 cols) */}
-                                                {Array.from({ length: Math.ceil(curriculumLessons.length / 8) }).map((_, pageIndex) => (
-                                                    <div 
-                                                        key={pageIndex}
-                                                        className="w-full flex-shrink-0 grid grid-cols-4 gap-4"
-                                                        style={{ gridTemplateRows: 'repeat(2, 1fr)' }}
-                                                    >
-                                                        {curriculumLessons.slice(pageIndex * 8, (pageIndex + 1) * 8).map((lesson) => (
-                                                            <Card 
-                                                                key={lesson.id} 
-                                                                className="bg-white shadow-sm border border-gray-200 hover:shadow-md hover:bg-blue-50 transition-all cursor-pointer h-full"
-                                                                onClick={() => {
-                                                                    // Có thể chuyển đến trang xem chi tiết hoặc để trống
-                                                                    console.log("View lesson details:", lesson.id)
-                                                                }}
-                                                            >
-                                                                <CardHeader className="pb-3">
-                                                                    <div className="flex items-start justify-between">
-                                                                        <CardTitle className="text-base font-semibold text-gray-900">
-                                                                            {lesson.name}
-                                                                        </CardTitle>
-                                                                        <div className="flex items-center gap-1">
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation()
-                                                                                    deleteLessonList(lesson.id)
-                                                                                }}
-                                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
-                                                                                title="Xóa danh sách bài học"
-                                                                            >
-                                                                                <Trash2 className="w-3 h-3" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    </div>
-                                                                </CardHeader>
-                                                                <CardContent className="pt-0">
-                                                                    <div className="space-y-3">
-                                                                        {/* Level Info */}
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Badge variant="outline" className="text-xs">
-                                                                                {getLevelName(lesson.id_curriculum, lesson.id_level)}
-                                                                            </Badge>
-                                                                        </div>
-                                                                        
-                                                                        {/* Exercise Count */}
-                                                                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                                                                            <BookOpen className="w-4 h-4" />
-                                                                            <span>{lesson.list_exercise.length} bài tập</span>
-                                                                        </div>
-                                                                        
-                                                                        {/* Exercise Preview */}
-                                                                        <div className="flex space-x-1">
-                                                                            <p className="text-xs font-medium text-gray-700">Các bài tập:</p>
-                                                                            <div className="text-xs text-gray-600">
-                                                                                {lesson.list_exercise.slice(0, 2).map((exercise, index) => (
-                                                                                    <div key={index} className="truncate">• {exercise}</div>
-                                                                                ))}
-                                                                                {lesson.list_exercise.length > 2 && (
-                                                                                    <div className="text-gray-400">
-                                                                                        +{lesson.list_exercise.length - 2} bài tập khác
-                                                                                    </div>
-                                                                                )}
+                                        <div className="relative">
+                                            {/* Carousel Container */}
+                                            <div className="overflow-hidden">
+                                                <div
+                                                    className="flex transition-transform duration-300 ease-in-out"
+                                                    style={{
+                                                        transform: curriculumLessons.length > 8
+                                                            ? `translateX(-${Math.floor(getCarouselIndex(curriculum.id) / 8) * 100}%)`
+                                                            : 'translateX(0%)'
+                                                    }}
+                                                >
+                                                    {/* Create pages of 8 items (2 rows x 4 cols) or single row for < 5 items */}
+                                                    {Array.from({ length: Math.ceil(curriculumLessons.length / 8) }).map((_, pageIndex) => (
+                                                        <div
+                                                            key={pageIndex}
+                                                            className={`w-full flex-shrink-0 grid grid-cols-4 gap-4 ${curriculumLessons.length < 5
+                                                                ? 'grid-rows-1'
+                                                                : ''
+                                                                }`}
+                                                            style={curriculumLessons.length < 5
+                                                                ? {}
+                                                                : { gridTemplateRows: 'repeat(2, 1fr)' }
+                                                            }
+                                                        >
+                                                            {curriculumLessons.slice(pageIndex * 8, (pageIndex + 1) * 8).map((lesson) => (
+                                                                <Card
+                                                                    key={lesson.id}
+                                                                    className="bg-white shadow-sm border border-gray-200 hover:shadow-md hover:bg-blue-50 transition-all cursor-pointer h-full"
+                                                                    onClick={() => {
+                                                                        // Có thể chuyển đến trang xem chi tiết hoặc để trống
+                                                                        console.log("View lesson details:", lesson.id)
+                                                                    }}
+                                                                >
+                                                                    <CardHeader className="pb-3">
+                                                                        <div className="flex items-start justify-between">
+                                                                            <CardTitle className="h-[3rem] text-base font-semibold text-gray-900">
+                                                                                {lesson.name}
+                                                                            </CardTitle>
+                                                                            <div className="flex items-center gap-1">
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation()
+                                                                                        deleteLessonList(lesson.id)
+                                                                                    }}
+                                                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
+                                                                                    title="Xóa danh sách bài học"
+                                                                                >
+                                                                                    <Trash2 className="w-3 h-3" />
+                                                                                </Button>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="flex justify-center items-center gap-2 mt-4">
-                                                                            <Button
-                                                                                
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation()
-                                                                                    router.push(`/taobaihoc?id=${lesson.id}`)
-                                                                                }}
-                                                                                className="flex-1 text-white bg-green-600 hover:bg-green-700 p-1"
-                                                                                title="Tạo bài học mới"
-                                                                            >
-                                                                                <Plus className="w-3 h-3" />
-                                                                                Tạo bài học mới
-                                                                            </Button>
-                                                                            <Button
-                                                                                
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation()
-                                                                                    
-                                                                                    // Lưu dữ liệu edit vào sessionStorage
-                                                                                    const editData = {
-                                                                                        id: lesson.id,
-                                                                                        curriculum: lesson.id_curriculum,
-                                                                                        level: lesson.id_level,
-                                                                                        name: lesson.name,
-                                                                                        exercises: lesson.list_exercise // Đây là names từ API format=names
-                                                                                    }
-                                                                                    console.log('Saving edit data to sessionStorage:', editData)
-                                                                                    sessionStorage.setItem('editLessonData', JSON.stringify(editData))
-                                                                                    
-                                                                                    // Verify data was saved
-                                                                                    const savedData = sessionStorage.getItem('editLessonData')
-                                                                                    console.log('Verified saved data:', savedData)
-                                                                                    
-                                                                                    // Chuyển đến trang edit với URL có minimal params làm fallback
-                                                                                    router.push(`/taodanhsachbaihoc?mode=edit&id=${lesson.id}`)
-                                                                                }}
-                                                                                className="flex-1 text-white bg-blue-600 hover:bg-blue-700 p-1"
-                                                                                title="Chỉnh sửa danh sách bài học"
-                                                                            >
-                                                                                <Edit className="w-3 h-3" />
-                                                                                Chỉnh sửa danh sách bài học
-                                                                            </Button>
+                                                                    </CardHeader>
+                                                                    <CardContent className="pt-0">
+                                                                        <div className="space-y-3">
+                                                                            {/* Level Info */}
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Badge variant="outline" className="text-xs">
+                                                                                    {getLevelName(lesson.id_curriculum, lesson.id_level)}
+                                                                                </Badge>
+                                                                            </div>
+
+                                                                            {/* Exercise Count */}
+                                                                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                                                                                <BookOpen className="w-4 h-4" />
+                                                                                <span>{lesson.list_exercise.length} bài tập</span>
+                                                                            </div>
+
+                                                                            {/* Exercise Preview */}
+                                                                            <div className="flex space-x-1 h-[3rem] ">
+                                                                                <p className="text-xs font-medium text-gray-700">Các bài tập:</p>
+                                                                                <div className="text-xs text-gray-600">
+                                                                                    {lesson.list_exercise.slice(0, 2).map((exercise, index) => (
+                                                                                        <div key={index} className="truncate">• {exercise}</div>
+                                                                                    ))}
+                                                                                    {lesson.list_exercise.length > 2 && (
+                                                                                        <div className="text-gray-400">
+                                                                                            +{lesson.list_exercise.length - 2} bài tập khác
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center gap-2 mt-4">
+                                                                                <Button
+
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation()
+                                                                                        router.push(`/taobaihoc?id=${lesson.id}`)
+                                                                                    }}
+                                                                                    className="flex-1 text-white bg-green-600 hover:bg-green-700 p-1"
+                                                                                    title="Tạo bài học mới"
+                                                                                >
+                                                                                    <Play className="w-3 h-3" />
+                                                                                    Tạo mới
+                                                                                </Button>
+                                                                                <Button
+
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation()
+
+                                                                                        // Lưu dữ liệu edit vào sessionStorage
+                                                                                        const editData = {
+                                                                                            id: lesson.id,
+                                                                                            curriculum: lesson.id_curriculum,
+                                                                                            level: lesson.id_level,
+                                                                                            name: lesson.name,
+                                                                                            exercises: lesson.list_exercise // Đây là names từ API format=names
+                                                                                        }
+                                                                                        console.log('Saving edit data to sessionStorage:', editData)
+                                                                                        sessionStorage.setItem('editLessonData', JSON.stringify(editData))
+
+                                                                                        // Verify data was saved
+                                                                                        const savedData = sessionStorage.getItem('editLessonData')
+                                                                                        console.log('Verified saved data:', savedData)
+
+                                                                                        // Chuyển đến trang edit với URL có minimal params làm fallback
+                                                                                        router.push(`/taodanhsachbaihoc?mode=edit&id=${lesson.id}`)
+                                                                                    }}
+                                                                                    className="flex-1 text-white bg-blue-600 hover:bg-blue-700 p-1"
+                                                                                    title="Chỉnh sửa danh sách bài học"
+                                                                                >
+                                                                                    <Pen className="w-3 h-3" />
+                                                                                    Chỉnh sửa
+                                                                                </Button>
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                </CardContent>
-                                                            </Card>
-                                                        ))}
-                                                    </div>
-                                                ))}
+                                                                    </CardContent>
+                                                                </Card>
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        {/* Navigation Buttons */}
-                                        {curriculumLessons.length > 8 && (
-                                            <>
-                                                {/* Previous Button - Ẩn ở trang đầu */}
-                                                {Math.floor(getCarouselIndex(curriculum.id) / 8) > 0 && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white shadow-md hover:bg-gray-50"
-                                                        onClick={() => prevSlide(curriculum.id)}
-                                                    >
-                                                        <ChevronLeft className="w-4 h-4" />
-                                                    </Button>
-                                                )}
+                                            {/* Navigation Buttons */}
+                                            {curriculumLessons.length > 8 && (
+                                                <>
+                                                    {/* Previous Button - Ẩn ở trang đầu */}
+                                                    {Math.floor(getCarouselIndex(curriculum.id) / 8) > 0 && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 bg-white shadow-md hover:bg-gray-50"
+                                                            onClick={() => prevSlide(curriculum.id)}
+                                                        >
+                                                            <ChevronLeft className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
 
-                                                {/* Next Button - Ẩn ở trang cuối */}
-                                                {Math.floor(getCarouselIndex(curriculum.id) / 8) < Math.ceil(curriculumLessons.length / 8) - 1 && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white shadow-md hover:bg-gray-50"
-                                                        onClick={() => nextSlide(curriculum.id, curriculumLessons.length)}
-                                                    >
-                                                        <ChevronRight className="w-4 h-4" />
-                                                    </Button>
-                                                )}
-                                            </>
-                                        )}
+                                                    {/* Next Button - Ẩn ở trang cuối */}
+                                                    {Math.floor(getCarouselIndex(curriculum.id) / 8) < Math.ceil(curriculumLessons.length / 8) - 1 && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 bg-white shadow-md hover:bg-gray-50"
+                                                            onClick={() => nextSlide(curriculum.id, curriculumLessons.length)}
+                                                        >
+                                                            <ChevronRight className="w-4 h-4" />
+                                                        </Button>
+                                                    )}
+                                                </>
+                                            )}
 
-                                        {/* Dots Indicator */}
-                                        {curriculumLessons.length > 8 && (
-                                            <div className="flex justify-center mt-4 gap-2">
-                                                {Array.from({ length: Math.ceil(curriculumLessons.length / 8) }).map((_, index) => (
-                                                    <button
-                                                        key={index}
-                                                        className={`w-2 h-2 rounded-full transition-colors ${
-                                                            Math.floor(getCarouselIndex(curriculum.id) / 8) === index
+                                            {/* Dots Indicator */}
+                                            {curriculumLessons.length > 8 && (
+                                                <div className="flex justify-center mt-4 gap-2">
+                                                    {Array.from({ length: Math.ceil(curriculumLessons.length / 8) }).map((_, index) => (
+                                                        <button
+                                                            key={index}
+                                                            className={`w-2 h-2 rounded-full transition-colors ${Math.floor(getCarouselIndex(curriculum.id) / 8) === index
                                                                 ? 'bg-blue-600'
                                                                 : 'bg-gray-300'
-                                                        }`}
-                                                        onClick={() => setCarouselIndex(curriculum.id, index * 8)}
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                                                }`}
+                                                            onClick={() => setCarouselIndex(curriculum.id, index * 8)}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )
@@ -855,12 +870,12 @@ export default function QuanLyGiaoTrinh() {
                         {/* Empty State for Lesson Lists */}
                         {(() => {
                             const hasAnyLessons = curriculums.some(curriculum => {
-                                const effectiveSearchQuery = lessonSearchQuery.trim() 
-                                    ? lessonSearchQuery 
+                                const effectiveSearchQuery = lessonSearchQuery.trim()
+                                    ? lessonSearchQuery
                                     : getCurriculumSearchQuery(curriculum.id)
                                 return getLessonsByCurriculumAndSearch(curriculum.id, effectiveSearchQuery).length > 0
                             })
-                            
+
                             if (lessonLists.length === 0) {
                                 return (
                                     <Card className="bg-white border border-gray-200 shadow-sm">
@@ -872,8 +887,8 @@ export default function QuanLyGiaoTrinh() {
                                             <p className="text-gray-600 mb-6">
                                                 Tạo danh sách bài học từ các giáo trình ở trên
                                             </p>
-                                            <Button 
-                                                onClick={() => router.push("/taodanhsachtu")} 
+                                            <Button
+                                                onClick={() => router.push("/taodanhsachtu")}
                                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                                             >
                                                 Tạo danh sách bài học mới
@@ -882,11 +897,11 @@ export default function QuanLyGiaoTrinh() {
                                     </Card>
                                 )
                             }
-                            
+
                             if (!hasAnyLessons && (lessonSearchQuery.trim() || Object.values(curriculumSearchQueries).some(q => q.trim()))) {
-                                const activeSearch = lessonSearchQuery.trim() || 
+                                const activeSearch = lessonSearchQuery.trim() ||
                                     Object.entries(curriculumSearchQueries).find(([, query]) => query.trim())?.[1] || ""
-                                
+
                                 return (
                                     <Card className="bg-white border border-gray-200 shadow-sm">
                                         <CardContent className="p-12 text-center flex flex-col justify-center" style={{ minHeight: '400px' }}>
@@ -901,7 +916,7 @@ export default function QuanLyGiaoTrinh() {
                                     </Card>
                                 )
                             }
-                            
+
                             return null
                         })()}
                     </div>

@@ -1,6 +1,7 @@
 import { promises as fs } from "fs"
 import path from "path"
 import { NextRequest, NextResponse } from "next/server"
+import { Course } from "@/lib/types"
 
 const dataPath = path.join(process.cwd(), "src", "lib", "courses.json")
 
@@ -10,7 +11,7 @@ export async function GET(
 ) {
   const file = await fs.readFile(dataPath, "utf-8")
   const courses = JSON.parse(file)
-  const course = courses.find((c: any) => c.id === params.id)
+  const course = courses.find((c: Course) => c.id === params.id)
 
   if (!course) {
     return NextResponse.json({ error: "Course not found" }, { status: 404 })
@@ -32,7 +33,7 @@ export async function PATCH(req: NextRequest) {
 
     const file = await fs.readFile(dataPath, "utf-8")
     const courses = JSON.parse(file)
-    const course = courses.find((c: any) => c.id === id)
+    const course = courses.find((c: Course) => c.id === id)
 
     if (!course) {
       return NextResponse.json({ error: "Không tìm thấy khóa học" }, { status: 404 })
@@ -44,7 +45,7 @@ export async function PATCH(req: NextRequest) {
     await fs.writeFile(dataPath, JSON.stringify(courses, null, 2), "utf-8")
 
     return NextResponse.json({ message: "Đã cập nhật trạng thái", course })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Lỗi server" }, { status: 500 })
   }
 }

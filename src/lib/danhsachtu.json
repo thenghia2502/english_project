@@ -6,20 +6,101 @@
     "id_level": "level-1",
     "list_exercise": [
       "unit-1",
-      "unit-5",
-      "unit-9",
-      "unit-13",
-      "unit-17"
+      "unit-5"
     ]
   },
   {
-    "id": "09658f32-3afa-47d3-b835-743c8cca3c56",
-    "name": "bai2",
+    "id": "e3af4b65-11dc-4de7-933b-0e3c8f617a5c",
+    "name": "test123",
     "id_curriculum": "curriculum-1",
     "id_level": "level-1",
     "list_exercise": [
       "Introducing yourself",
-      "Countries"
+      "Daily routines",
+      "Hobbies and interests",
+      "Final assessment",
+      "Resources and tools"
+    ]
+  },
+  {
+    "id": "b98398ba-17a9-4203-945b-5100d50548b8",
+    "name": "test1234",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Introducing yourself",
+      "Countries",
+      "Talking about yourself",
+      "Family and pets"
+    ]
+  },
+  {
+    "id": "946dc1f3-b878-478d-95f8-efc62f7ec042",
+    "name": "bai133333",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Introducing yourself",
+      "Countries",
+      "Food and drink"
+    ]
+  },
+  {
+    "id": "9d01df85-a766-4718-a036-fbd02543fd16",
+    "name": "bai26666",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Introducing yourself",
+      "Countries",
+      "Review"
+    ]
+  },
+  {
+    "id": "0d881b29-6b0f-483c-a6b1-2afbee45fdbf",
+    "name": "bai46666",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Food and drink",
+      "Weather",
+      "Feedback and next steps",
+      "Cultural insights"
+    ]
+  },
+  {
+    "id": "0d881b29-6b0f-483c-a6b1-2afbee45dhein",
+    "name": "bai46666111",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Food and drink",
+      "Weather",
+      "Feedback and next steps",
+      "Cultural insights"
+    ]
+  },
+  {
+    "id": "0d881b29-6b0f-483c-a6b1-2afbee45akshci",
+    "name": "bai466662222",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Food and drink",
+      "Weather",
+      "Feedback and next steps",
+      "Cultural insights"
+    ]
+  },
+  {
+    "id": "aedf35c2-ed57-4ea4-91e5-eb4feb6b47a5",
+    "name": "bai2",
+    "id_curriculum": "curriculum-2",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Email Etiquette",
+      "Meetings and Presentations",
+      "Negotiation Skills"
     ]
   }
 ]
