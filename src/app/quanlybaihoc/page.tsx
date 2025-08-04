@@ -255,7 +255,7 @@ export default function QuanLyKhoaHocPage() {
                     <div className="absolute top-0 left-0 flex pr-2 pb-1 bg-[#f3f4f6]">
                       <Funnel className="bg-[#f3f4f6] w-4 h-4" />
                       <span className="text-sm bg-[#f3f4f6] ">
-                        Bộ lọc
+                        Sắp xếp
                       </span>
                     </div>
                   </div>
