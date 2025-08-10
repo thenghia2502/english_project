@@ -3,12 +3,14 @@ import VocabTrainerSkeleton from './skeletons/vocab-trainer-skeleton'
 import QuanLyGiaoTrinhSkeleton from './skeletons/quan-ly-giao-trinh-skeleton'
 import TaoBaiHocSkeleton from './skeletons/tao-bai-hoc-skeleton'
 import QuanLyBaiHocSkeleton from './skeletons/quan-ly-bai-hoc-skeleton'
+import TaoDanhSachBaiHocSkeleton from './skeletons/tao-danh-sach-bai-hoc-skeleton'
+import TaoDanhSachTuSkeleton from './skeletons/tao-danh-sach-tu-skeleton'
 
 interface LoadingProps {
   message?: string
   className?: string
   variant?: 'default' | 'minimal' | 'full-page' | 'skeleton'
-  skeletonType?: 'vocab-trainer' | 'quan-ly-giao-trinh' | 'tao-bai-hoc' | 'quan-ly-bai-hoc'
+  skeletonType?: 'vocab-trainer' | 'quan-ly-giao-trinh' | 'tao-bai-hoc' | 'quan-ly-bai-hoc' | 'tao-danh-sach-bai-hoc' | 'tao-danh-sach-tu'
 }
 
 export function Loading({ 
@@ -32,6 +34,12 @@ export function Loading({
     }
     if (skeletonType === 'quan-ly-bai-hoc') {
       return <QuanLyBaiHocSkeleton className={className} />
+    }
+    if (skeletonType === 'tao-danh-sach-bai-hoc') {
+      return <TaoDanhSachBaiHocSkeleton className={className} />
+    }
+    if (skeletonType === 'tao-danh-sach-tu') {
+      return <TaoDanhSachTuSkeleton className={className} />
     }
   }
 

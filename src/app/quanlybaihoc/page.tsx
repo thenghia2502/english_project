@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BookOpen, Clock, Users, Trash2, Play, Pen, Check, Funnel } from "lucide-react"
+import { Clock, Users, Trash2, Play, Pen, Check, Funnel } from "lucide-react"
 import { useRouter } from "next/navigation"
 import data2 from "@/app/taobaihoc/data2.json"
 import clsx from "clsx"
@@ -13,6 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Word, Course, Lesson } from "@/lib/types"
 import Loading from "@/components/ui/loading"
+import ErrorHandler from "@/components/ui/error-handler" // ✅ Import ErrorHandler
 
 // Helper functions for sorting and searching
 function sortCoursesByCreatedAt(courses: Course[]): Course[] {
@@ -37,6 +38,7 @@ export default function QuanLyKhoaHocPage() {
   const [originCourses, setOriginCourses] = useState<Course[]>([])
   const [courses, setCourses] = useState<Course[]>([])
   const [isDataLoading, setIsDataLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null) // ✅ Thêm error state
   const router = useRouter()
 
   // Load courses from localStorage on component mount
@@ -44,8 +46,12 @@ export default function QuanLyKhoaHocPage() {
     const fetchCourses = async () => {
       try {
         setIsDataLoading(true)
+        setError(null) // ✅ Reset error khi bắt đầu fetch
+
         const res = await fetch("/api/courses")
-        if (!res.ok) throw new Error("Failed to fetch")
+        if (!res.ok) {
+          throw new Error(`Không thể tải danh sách khóa học. Status: ${res.status}`)
+        }
         const data = await res.json()
         console.log("data: ", data)
         const sortedData = sortCoursesByCreatedAt(data)
@@ -53,6 +59,7 @@ export default function QuanLyKhoaHocPage() {
         setOriginCourses(sortedData)
       } catch (err) {
         console.error("Lỗi khi lấy khóa học:", err)
+        setError(err instanceof Error ? err.message : 'Không thể tải dữ liệu khóa học')
       } finally {
         setIsDataLoading(false)
       }
@@ -61,6 +68,127 @@ export default function QuanLyKhoaHocPage() {
     fetchCourses()
   }, [])
 
+  const [lessons, setLessons] = useState<Lesson[]>([])
+  const [data, setData] = useState<{
+    [key: string]: Word[]
+  }>(data2)
+
+  useEffect(() => {
+    const fetchLessons = async () => {
+      try {
+        const res = await fetch("/api/lessons")
+        if (!res.ok) {
+          throw new Error(`Không thể tải danh sách bài học. Status: ${res.status}`)
+        }
+        const data = await res.json()
+        setLessons(data)
+      } catch (err) {
+        console.error("Lỗi khi lấy bài học:", err)
+        // Không set error ở đây vì lessons là data phụ
+      }
+    }
+
+    fetchLessons()
+  }, [])
+
+  useEffect(() => {
+    if (lessons.length === 0) return
+
+    const fetchLevel2Words = async () => {
+      try {
+        const requests: Promise<[string, Word[] | null]>[] = []
+
+        for (const lesson of lessons) {
+          for (const word of lesson.words) {
+            const promise = fetch(`/api/words/${word.id}/level2`)
+              .then(async (res) => {
+                if (!res.ok) return [word.id, null] as [string, null]
+                const data = await res.json()
+                if (!Array.isArray(data)) return [word.id, null] as [string, null]
+                return [word.id, data] as [string, Word[]]
+              })
+              .catch(() => [word.id, null] as [string, null])
+
+            requests.push(promise)
+          }
+        }
+
+        const responses = await Promise.all(requests)
+
+        // Chuyển thành map { [wordId]: Word[] }
+        const resultMap: Record<string, Word[]> = {}
+
+        for (const [wordId, words] of responses) {
+          if (words) {
+            resultMap[wordId] = words
+          }
+        }
+
+        setData(resultMap)
+      } catch (err) {
+        console.error("Lỗi khi lấy từ vựng level 2:", err)
+        // Không set error ở đây vì đây là data phụ
+      }
+    }
+
+    fetchLevel2Words()
+  }, [lessons])
+
+  // Remove the complex loading logic and just use simple data loading check
+  // The loading will be controlled by the main data fetch (courses)
+  const allWordsById = useMemo(() => {
+    const result: Record<string, Word> = {}
+
+    lessons.forEach((lesson) => {
+      lesson.words.forEach((word) => {
+        result[word.id] = word
+      })
+    })
+
+    Object.values(data).forEach((words) => {
+      words.forEach((word) => {
+        result[word.id] = word
+      })
+    })
+
+    return result
+  }, [lessons, data])
+  const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "progress-desc" | "progress-asc">('date-desc')
+  const [searchText, setSearchText] = useState('')
+
+  const handleSortChange = (value: string) => {
+    if (value === "date-desc" || value === "date-asc" || value === "progress-desc" || value === "progress-asc") {
+      setSortBy(value)
+    }
+  }
+
+  // Tính toán courses đã được lọc và sắp xếp
+  const filteredAndSortedCourses = useMemo(() => {
+    // Lọc theo text search trước
+    const filtered = searchText
+      ? searchCoursesByName(originCourses, searchText)
+      : originCourses
+
+    // Sau đó sắp xếp
+    if (sortBy === 'date-desc') {
+      return sortCoursesByCreatedAt(filtered) // Mới đến cũ
+    } else if (sortBy === 'date-asc') {
+      return [...filtered].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Cũ đến mới
+    } else if (sortBy === 'progress-desc') {
+      return sortCoursesByDone(filtered) // Giảm dần (100% -> 0%)
+    } else { // progress-asc
+      return [...filtered].sort((a, b) => Number(a.done) - Number(b.done)) // Tăng dần (0% -> 100%)
+    }
+  }, [originCourses, sortBy, searchText])
+
+  // Cập nhật courses khi filteredAndSortedCourses thay đổi
+  useEffect(() => {
+    setCourses(filteredAndSortedCourses)
+  }, [filteredAndSortedCourses])
+
+  const handleFindCourses = useCallback((text: string) => {
+    setSearchText(text)
+  }, [])
 
   // Delete a course
   const deleteCourse = (courseId: string) => {
@@ -87,108 +215,6 @@ export default function QuanLyKhoaHocPage() {
       minute: "2-digit",
     })
   }
-  const [lessons, setLessons] = useState<Lesson[]>([])
-  const [data, setData] = useState<{
-    [key: string]: Word[]
-  }>(data2)
-  useEffect(() => {
-    const fetchLessons = async () => {
-      const res = await fetch("/api/lessons")
-      const data = await res.json()
-      setLessons(data)
-    }
-
-    fetchLessons()
-  }, [])
-  useEffect(() => {
-    if (lessons.length === 0) return
-
-    const fetchLevel2Words = async () => {
-      const requests: Promise<[string, Word[] | null]>[] = []
-
-      for (const lesson of lessons) {
-        for (const word of lesson.words) {
-          const promise = fetch(`/api/words/${word.id}/level2`)
-            .then(async (res) => {
-              if (!res.ok) return [word.id, null] as [string, null]
-              const data = await res.json()
-              if (!Array.isArray(data)) return [word.id, null] as [string, null]
-              return [word.id, data] as [string, Word[]]
-            })
-            .catch(() => [word.id, null] as [string, null])
-
-          requests.push(promise)
-        }
-      }
-
-      const responses = await Promise.all(requests)
-
-      // Chuyển thành map { [wordId]: Word[] }
-      const resultMap: Record<string, Word[]> = {}
-
-      for (const [wordId, words] of responses) {
-        if (words) {
-          resultMap[wordId] = words
-        }
-      }
-
-      setData(resultMap)
-    }
-
-    fetchLevel2Words()
-  }, [lessons])
-
-  // Remove the complex loading logic and just use simple data loading check
-  // The loading will be controlled by the main data fetch (courses)
-  const allWordsById = useMemo(() => {
-    const result: Record<string, Word> = {}
-
-    lessons.forEach((lesson) => {
-      lesson.words.forEach((word) => {
-        result[word.id] = word
-      })
-    })
-
-    Object.values(data).forEach((words) => {
-      words.forEach((word) => {
-        result[word.id] = word
-      })
-    })
-
-    return result
-  }, [lessons, data])
-  const [sortBy, setSortBy] = useState<"date" | "progress">('date')
-  const [searchText, setSearchText] = useState('')
-
-  const handleSortChange = (value: string) => {
-    if (value === "date" || value === "progress") {
-      setSortBy(value)
-    }
-  }
-
-  // Tính toán courses đã được lọc và sắp xếp
-  const filteredAndSortedCourses = useMemo(() => {
-    // Lọc theo text search trước
-    const filtered = searchText
-      ? searchCoursesByName(originCourses, searchText)
-      : originCourses
-
-    // Sau đó sắp xếp
-    if (sortBy === 'date') {
-      return sortCoursesByCreatedAt(filtered)
-    } else {
-      return sortCoursesByDone(filtered)
-    }
-  }, [originCourses, sortBy, searchText])
-
-  // Cập nhật courses khi filteredAndSortedCourses thay đổi
-  useEffect(() => {
-    setCourses(filteredAndSortedCourses)
-  }, [filteredAndSortedCourses])
-
-  const handleFindCourses = useCallback((text: string) => {
-    setSearchText(text)
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -203,63 +229,106 @@ export default function QuanLyKhoaHocPage() {
           </div>
         </div>
       </nav>
-      {/* Loadind data */}
+
+      {/* ✅ Loading State */}
       {isDataLoading && (
         <Loading
           variant="skeleton"
           skeletonType="quan-ly-bai-hoc"
         />
       )}
-      {/* Main Content */}
-      {!isDataLoading && (
+
+      {/* ✅ Error State */}
+      {error && !isDataLoading && (
+        <ErrorHandler
+          type="GENERAL_ERROR"
+          pageType="quan-ly-bai-hoc"
+          title="Không thể tải dữ liệu quản lý bài học"
+          message="Đã xảy ra lỗi khi tải danh sách khóa học. Vui lòng thử lại."
+          errorDetails={error}
+          onRetry={() => window.location.reload()}
+          onGoBack={() => router.push("/quanlygiaotrinh")}
+          onGoHome={() => router.push("/")}
+        />
+      )}
+
+      {/* ✅ Main Content - only show when not loading and no error */}
+      {!isDataLoading && !error && (
         <div className="pt-[4.5rem] min-h-screen">
-          <div className="mx-auto  px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto px-4 py-8 sm:px-6 lg:px-8">
             {courses.length === 0 ? (
-              <Card className="bg-white border border-gray-200 shadow-sm">
-                <CardContent className="p-12 text-center">
-                  <div className="text-gray-400">
-                    <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                    <p className="text-lg font-medium mb-2 text-gray-600">Chưa có khóa học nào</p>
-                    <p className="text-sm text-gray-500 mb-6">Tạo khóa học đầu tiên của bạn để bắt đầu học từ vựng</p>
-                    <Button
-                      onClick={() => router.push("/taokhoahoc")}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      Tạo khóa học mới
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              // ✅ Empty State - Sử dụng ErrorHandler
+              <ErrorHandler
+                type="NO_DATA_FOUND"
+                pageType="quan-ly-bai-hoc"
+                title="Chưa có khóa học nào"
+                message="Tạo khóa học đầu tiên của bạn để bắt đầu học từ vựng"
+                onRetry={() => window.location.reload()}
+                onGoBack={() => router.push("/quanlygiaotrinh")}
+                onGoHome={() => router.push("/")}
+              />
             ) : (
               <>
                 <div className="mb-5 space-y-2">
                   <div className="flex items-center m-2">
                     <Label className="w-[100px] text-lg">Tìm kiếm: </Label>
-                    <Input type="text" className="border-gray-300 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0" onChange={(e) => handleFindCourses(e.target.value)} />
+                    <Input 
+                      type="text" 
+                      placeholder="Nhập tên khóa học..."
+                      className="border-gray-300 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0" 
+                      onChange={(e) => handleFindCourses(e.target.value)} 
+                    />
                   </div>
                   <div className="relative p-2">
-                    <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-row space-x-6 p-6 border rounded-md border-gray-300">
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="date" id="date" />
-                        <Label htmlFor="date" className="text-sm font-medium cursor-pointer">
-                          Ngày tạo
-                        </Label>
+                    <div className="flex flex-row space-x-8 p-6 border rounded-md border-gray-300">
+                      {/* Container Ngày tạo */}
+                      <div className="flex flex-col space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-700">Ngày tạo</h4>
+                        <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-col space-y-2">
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <RadioGroupItem value="date-desc" id="date-desc" />
+                            <span className="text-sm">
+                              Mới đến cũ
+                            </span>
+                          </label>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <RadioGroupItem value="date-asc" id="date-asc" />
+                            <span className="text-sm">
+                              Cũ đến mới
+                            </span>
+                          </label>
+                        </RadioGroup>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <RadioGroupItem value="progress" id="progress" />
-                        <Label htmlFor="progress" className="text-sm font-medium cursor-pointer">
-                          Tiến độ
-                        </Label>
+
+                      {/* Container Tiến độ */}
+                      <div className="flex flex-col space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-700">Tiến độ</h4>
+                        <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-col space-y-2">
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <RadioGroupItem value="progress-desc" id="progress-desc" />
+                            <span className="text-sm">
+                              Giảm dần
+                            </span>
+                          </label>
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <RadioGroupItem value="progress-asc" id="progress-asc" />
+                            <span className="text-sm">
+                              Tăng dần
+                            </span>
+                          </label>
+                        </RadioGroup>
                       </div>
-                    </RadioGroup>
+                    </div>
+                    
                     <div className="absolute top-0 left-0 flex pr-2 pb-1 bg-[#f3f4f6]">
                       <Funnel className="bg-[#f3f4f6] w-4 h-4" />
-                      <span className="text-sm bg-[#f3f4f6] ">
+                      <span className="text-sm bg-[#f3f4f6]">
                         Sắp xếp
                       </span>
                     </div>
                   </div>
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {courses.map((course) => (
                     <Card
@@ -287,7 +356,7 @@ export default function QuanLyKhoaHocPage() {
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent className="pt-0 ">
+                      <CardContent className="pt-0">
                         <div className="space-y-4">
                           {/* Course Stats */}
                           <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -310,7 +379,7 @@ export default function QuanLyKhoaHocPage() {
                           </div>
 
                           {/* Sample Words */}
-                          <div className="flex items-center ">
+                          <div className="flex items-center">
                             <div className="space-y-2 min-w-[240px]">
                               <p className="text-sm font-medium text-gray-700">Từ vựng mẫu:</p>
                               <div className="flex flex-wrap gap-1">
@@ -327,14 +396,13 @@ export default function QuanLyKhoaHocPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex-1 flex justify-center ">
+                            <div className="flex-1 flex justify-center">
                               <div
                                 className={`h-[50px] w-[50px] rounded-full flex items-center justify-center text-white ${course.done === '100' ? 'bg-green-600' : 'bg-yellow-500'
                                   }`}
                               >
                                 {course.done === '100' ? <Check /> : `${course.done}%`}
                               </div>
-
                             </div>
                           </div>
 

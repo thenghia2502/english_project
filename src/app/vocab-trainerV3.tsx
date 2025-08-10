@@ -12,6 +12,8 @@ import audioDataLocalUS from './datalocalus.json';
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useSearchParams } from "next/navigation"
+import ErrorHandler from "@/components/ui/error-handler"
+
 // S3 Configuration - fallback if not found in data.json
 const S3_BUCKET_URL = "https://your-vocab-bucket.s3.amazonaws.com/audio"
 import { cn } from "@/lib/utils"
@@ -64,7 +66,8 @@ export default function VocabTrainer() {
     // const maxPlayCount = 100
     const [audioError, setAudioError] = useState(false)
     const [isLooping, setIsLooping] = useState(false)
-    const [isPageLoading, setIsPageLoading] = useState(true) // ✅ Thêm loading state cho trang
+    const [isPageLoading, setIsPageLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null) // ✅ Thêm dòng này
     const loopTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     // Track read counts for each word
     const currentWord = vocabularyData[currentIndex]
@@ -480,18 +483,19 @@ export default function VocabTrainer() {
 
     useEffect(() => {
         if (!courseId) {
-            setIsPageLoading(false) // ✅ Không có courseId thì không loading
+            setError("NO_COURSE_SELECTED") // ✅ Set error khi không có courseId
+            setIsPageLoading(false)
             return
         }
 
         const fetchCourse = async () => {
             try {
-                setIsPageLoading(true) // ✅ Bắt đầu loading
+                setIsPageLoading(true)
+                setError(null) // ✅ Reset error khi bắt đầu fetch
+
                 const res = await fetch(`/api/courses/${courseId}`)
                 if (!res.ok) {
-                    // console.error("Không lấy được khóa học")
-                    setIsPageLoading(false)
-                    return
+                    throw new Error(`Không thể tải khóa học. Status: ${res.status}`)
                 }
                 const course = await res.json()
                 setSelectedCourse(course)
@@ -500,26 +504,30 @@ export default function VocabTrainer() {
                 const transformedData = await Promise.all(
                     course.words.map(async (cw: CourseWord) => {
                         let word = null
-                        if (cw.wordId.includes('l')) {
-
-                            const res1 = await fetch(`/api/word/level2/${cw.wordId}`)
-                            if (res1.ok) {
-                                word = await res1.json()
-
+                        try {
+                            if (cw.wordId.includes('l')) {
+                                const res1 = await fetch(`/api/word/level2/${cw.wordId}`)
+                                if (res1.ok) {
+                                    word = await res1.json()
+                                }
+                            } else {
+                                const res = await fetch(`/api/word/${cw.wordId}`)
+                                if (res.ok) {
+                                    word = await res.json()
+                                }
                             }
-                        } else {
-                            const res = await fetch(`/api/word/${cw.wordId}`)
-                            if (res.ok) {
-                                word = await res.json()
-
-                            }
+                        } catch (wordError) {
+                            console.error(`Lỗi khi fetch từ ${cw.wordId}:`, wordError)
+                            // Trả về từ placeholder thay vì throw error
+                            word = { id: cw.wordId, word: "❓", ipa: "", meaning: "" }
                         }
+
                         return {
-                            id: word?.id,
+                            id: word?.id || cw.wordId,
                             word: word?.word || "❓",
                             ipa: word?.ipa || "",
                             meaning: word?.meaning || "",
-                            audioUrl: getAudioUrlLocal(word?.word || "", "us"), // ✅ Dùng US làm mặc định
+                            audioUrl: getAudioUrlLocal(word?.word || "", "us"),
                             maxReads: Number(cw.maxReads) || 3,
                             showIpa: cw.showIpa,
                             showWord: cw.showWord,
@@ -535,13 +543,14 @@ export default function VocabTrainer() {
 
             } catch (error) {
                 console.error("Lỗi khi fetch khóa học:", error)
+                setError(error instanceof Error ? error.message : 'Không thể tải dữ liệu khóa học')
             } finally {
-                setIsPageLoading(false) // ✅ Kết thúc loading
+                setIsPageLoading(false)
             }
         }
 
         fetchCourse()
-    }, [courseId]) // ✅ Chỉ reload khi courseId thay đổi
+    }, [courseId])
 
     // ✅ useEffect riêng để xử lý thay đổi dialect
     useEffect(() => {
@@ -573,13 +582,32 @@ export default function VocabTrainer() {
                 </div>
             </nav>
 
-            {/* ✅ Loading State - Chỉ hiển thị skeleton khi đang loading */}
+            {/* ✅ Loading State */}
             {isPageLoading ? (
                 <Loading 
                     variant="skeleton" 
                     skeletonType="vocab-trainer"
                 />
+            ) : error ? (
+                // ✅ Error State - Sử dụng ErrorHandler component mới
+                <ErrorHandler
+                    type={error === "NO_COURSE_SELECTED" ? "NO_LESSON_SELECTED" : "GENERAL_ERROR"}
+                    pageType="vocab-trainer"
+                    title={error === "NO_COURSE_SELECTED" 
+                        ? "Chưa chọn khóa học" 
+                        : "Không thể tải dữ liệu khóa học"
+                    }
+                    message={error === "NO_COURSE_SELECTED"
+                        ? "Bạn cần chọn một khóa học để bắt đầu luyện tập từ vựng"
+                        : "Đã xảy ra lỗi khi tải khóa học và từ vựng. Vui lòng thử lại."
+                    }
+                    errorDetails={error !== "NO_COURSE_SELECTED" ? error : undefined}
+                    onRetry={error !== "NO_COURSE_SELECTED" ? () => window.location.reload() : undefined}
+                    onGoBack={() => window.location.href = '/quanlybaihoc'}
+                    onGoHome={() => window.location.href = '/'}
+                />
             ) : vocabularyData.length > 0 ? (
+                // ✅ Main Content
                 <main className="mx-auto min-h-[52rem] px-4 py-8 sm:px-6 lg:px-8 flex flex-col space-y-5">
                     {/* Radio Button Controls */}
                     <div className="mb-6 flex justify-between">
@@ -773,23 +801,16 @@ export default function VocabTrainer() {
                     )}
                 </main>
             ) : (
-                <div className="mx-auto px-4 py-8 sm:px-6 lg:px-8">
-                    <Card className="shadow-lg bg-white">
-                        <CardContent className="p-12 text-center">
-                            <div className="text-gray-400">
-                                <div className="text-5xl mb-4">📚</div>
-                                <p className="text-lg font-medium mb-2 text-gray-600">Chưa có khóa học nào được chọn</p>
-                                <p className="text-sm text-gray-500 mb-6">Vui lòng chọn một khóa học để bắt đầu học</p>
-                                <Button
-                                    onClick={() => (window.location.href = "/quanlybaihoc")}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                >
-                                    Chọn khóa học
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                // ✅ Empty State - Thay thế bằng ErrorHandler
+                <ErrorHandler
+                    type="NO_DATA_FOUND"
+                    pageType="vocab-trainer"
+                    title="Không có từ vựng trong khóa học"
+                    message="Khóa học này chưa có từ vựng nào. Vui lòng thêm từ vựng hoặc chọn khóa học khác."
+                    onRetry={() => window.location.reload()}
+                    onGoBack={() => window.location.href = '/quanlybaihoc'}
+                    onGoHome={() => window.location.href = '/'}
+                />
             )}
         </div>
     )

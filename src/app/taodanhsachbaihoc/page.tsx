@@ -8,6 +8,8 @@ import { FormValues, Unit } from "@/lib/types"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
+import Loading from "@/components/ui/loading"
+import ErrorHandler from "@/components/ui/error-handler"
 
 export default function TaoDanhSachTu() {
     const [curriculums, setCurriculums] = useState<{ id: string, title: string }[]>([])
@@ -347,28 +349,26 @@ export default function TaoDanhSachTu() {
                 </div>
             </nav>
             
-            {/* Loading State */}
+            {/* ✅ Loading State - Sử dụng skeleton */}
             {isLoading && (
-                <div className="pt-16 flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                        <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
-                    </div>
-                </div>
+                <Loading
+                    variant="skeleton"
+                    skeletonType="tao-danh-sach-bai-hoc"
+                />
             )}
 
-            {/* Error State */}
+            {/* ✅ Error State - Sử dụng ErrorHandler */}
             {error && !isLoading && (
-                <div className="pt-16 flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <div className="text-red-500 text-6xl mb-4">⚠️</div>
-                        <h2 className="text-xl font-semibold text-gray-900 mb-2">Có lỗi xảy ra</h2>
-                        <p className="text-gray-600 mb-4">{error}</p>
-                        <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
-                            Thử lại
-                        </Button>
-                    </div>
-                </div>
+                <ErrorHandler
+                    type="GENERAL_ERROR"
+                    pageType="tao-danh-sach-bai-hoc"
+                    title="Không thể tải dữ liệu tạo danh sách bài học"
+                    message="Đã xảy ra lỗi khi tải dữ liệu giáo trình. Vui lòng thử lại."
+                    errorDetails={error}
+                    onRetry={() => window.location.reload()}
+                    onGoBack={() => router.push("/quanlygiaotrinh")}
+                    onGoHome={() => router.push("/")}
+                />
             )}
 
             {/* Main Content - only show when not loading and no error */}

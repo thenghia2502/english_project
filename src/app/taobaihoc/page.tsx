@@ -29,7 +29,7 @@ import React from "react"
 import { Lesson } from "../api/lessons/route"
 import NoCopyWrapper from "@/components/no-copy-wrapper"
 import Loading from "@/components/ui/loading"
-import TaoBaiHocError from "@/components/ui/tao-bai-hoc-error"
+import ErrorHandler from "../../components/ui/error-handler"
 
 interface Word {
   "id": string
@@ -111,8 +111,7 @@ export default function TaoKhoaHocPage() {
   }, []);
 
   useEffect(() => {
-    
-    const fetchLessons = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
         setError(null)
@@ -120,30 +119,33 @@ export default function TaoKhoaHocPage() {
         const searchParams = new URLSearchParams(window.location.search);
         const id = searchParams.get("id");
         
-        // If no ID is provided, set a special state
+        // ✅ Check ID trước tiên
         if (!id) {
-          setLoading(false)
           setError("NO_LESSON_SELECTED")
           return
         }
 
-        const res = await fetch(`/api/lessons/${id}`)
-        if (!res.ok) throw new Error('Failed to fetch lessons')
-        const data = await res.json()
+        // ✅ Fetch tất cả data cần thiết
+        const [lessonsRes, coursesRes] = await Promise.all([
+          fetch(`/api/lessons/${id}`),
+          fetch(`/api/courses`) // ✅ Sửa từ /api/coursess thành /api/courses
+        ])
 
-        const res_get_courses = await fetch(`/api/courses`)
-        if (!res_get_courses.ok) throw new Error('Failed to fetch courses')
-        const courses: Course[] = await res_get_courses.json()
+        if (!lessonsRes.ok) throw new Error('Failed to fetch lessons')
+        if (!coursesRes.ok) throw new Error('Failed to fetch courses')
 
-        // ✅ Lấy wordId của các từ đã học (done = "100")
+        const lessonsData = await lessonsRes.json()
+        const coursesData: Course[] = await coursesRes.json()
+
+        // ✅ Lấy wordId của các từ đã học
         const learnedWordIds = new Set(
-          courses
+          coursesData
             .filter(course => course.done === "100")
             .flatMap(course => course.words.map(word => word.wordId))
         )
 
-        // ✅ Cập nhật mỗi từ trong lessons với trạng thái học và progress
-        const finalLessons = data.map((lesson: Lesson) => {
+        // ✅ Cập nhật lessons với trạng thái học
+        const finalLessons = lessonsData.map((lesson: Lesson) => {
           const wordsWithLearnedStatus = lesson.words.map((word: Word) => ({
             ...word,
             done: learnedWordIds.has(word.id)
@@ -151,12 +153,12 @@ export default function TaoKhoaHocPage() {
           
           return {
             ...lesson,
-            words: updateWordStatus(wordsWithLearnedStatus, courses)
+            words: updateWordStatus(wordsWithLearnedStatus, coursesData)
           };
         });
 
         setLessons(finalLessons)
-        setCourses(courses)
+        setCourses(coursesData)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred')
         console.error('Error fetching data:', err)
@@ -165,8 +167,50 @@ export default function TaoKhoaHocPage() {
       }
     }
 
-    fetchLessons()
-  }, [updateWordStatus, setCourses])
+    fetchData()
+  }, [updateWordStatus])
+
+  // ✅ Loại bỏ useEffect thứ hai để tránh conflict
+  // useEffect(() => {
+  //   const fetchapi = async () => {
+  //     // ... code cũ
+  //   }
+  //   fetchapi();
+  // }, [setCourses]);
+
+  // ✅ Sửa useEffect cuối để chỉ chạy khi có courses và lessons
+  useEffect(() => {
+    if (!courses || courses.length === 0 || !lessons || lessons.length === 0) return;
+
+    console.log("✅ courses ready:", courses);
+
+    setLessonsFiltered(() => {
+      const updatedLessons = lessons.map((lesson) => {
+        const updatedWords = lesson.words.map((word) => {
+          const matcheds = findAllMatchedWords(word.id, courses);
+          const belong = findBelongLessons(word.id, courses);
+
+          if (matcheds.length < 1) return word;
+
+          const isDone = matcheds.some(
+            (matched) => Number(matched.progress || 0) >= Number(matched.maxReads || 0)
+          );
+          return {
+            ...word,
+            done: isDone,
+            belong: belong ?? "",
+          };
+        });
+
+        return {
+          ...lesson,
+          words: updatedWords,
+        };
+      });
+
+      return updatedLessons;
+    });
+  }, [courses, lessons]);
 
   useEffect(() => {
     if (lessons.length === 0) return
@@ -577,21 +621,6 @@ export default function TaoKhoaHocPage() {
   };
 
   useEffect(() => {
-    const fetchapi = async () => {
-      try {
-        const res_get_courses = await fetch(`/api/courses`)
-        if (!res_get_courses.ok) throw new Error('Failed to fetch courses')
-        const coursesData: Course[] = await res_get_courses.json()
-        setCourses(coursesData)
-      } catch (err) {
-        console.error('Error fetching courses:', err)
-        setError(err instanceof Error ? err.message : 'Failed to fetch courses')
-      }
-    }
-    fetchapi();
-  }, [setCourses]);
-
-  useEffect(() => {
     if (!courses || courses.length === 0) return;
 
     console.log("✅ courses ready:", courses);
@@ -636,427 +665,380 @@ export default function TaoKhoaHocPage() {
   return (
     <NoCopyWrapper>
       <div className="min-h-screen bg-gray-100">
-      {/* Fixed Top Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold text-gray-900">Tạo bài học</h1>
-            <Button onClick={() => router.push("/quanlybaihoc")} variant="outline">
-              Quản lý bài học
-            </Button>
+        {/* Fixed Top Navbar */}
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+          <div className="px-6 py-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-bold text-gray-900">Tạo bài học</h1>
+              <Button onClick={() => router.push("/quanlybaihoc")} variant="outline">
+                Quản lý bài học
+              </Button>
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      {/* Loading State */}
-      {loading && (
-        <Loading 
-          variant="skeleton" 
-          skeletonType="tao-bai-hoc"
-        />
-      )}
+        {/* Loading State */}
+        {loading && (
+          <Loading 
+            variant="skeleton" 
+            skeletonType="tao-bai-hoc"
+          />
+        )}
 
-      {/* Error State */}
-      {error && !loading && (
-        <>
-          {error === "NO_LESSON_SELECTED" ? (
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-              <div className="w-full max-w-md">
-                <Card className="bg-white shadow-lg border border-blue-200">
-                  <CardHeader className="text-center pb-4">
-                    <div className="flex justify-center mb-4">
-                      <div className="bg-blue-100 p-4 rounded-full">
-                        <div className="text-4xl">📚</div>
-                      </div>
-                    </div>
-                    <CardTitle className="text-xl font-bold text-gray-900 mb-2">
-                      Chưa chọn danh sách bài học
-                    </CardTitle>
-                    <p className="text-gray-600 text-base">
-                      Bạn cần chọn một danh sách bài học trước khi tạo bài học mới
-                    </p>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg mb-6">
-                      <div className="text-2xl mb-2">🎯</div>
-                      <h4 className="font-medium text-blue-900 mb-1">Hướng dẫn</h4>
-                      <p className="text-sm text-blue-700">
-                        Hãy vào trang quản lý giáo trình để chọn danh sách bài học mà bạn muốn tạo bài học từ đó
-                      </p>
-                    </div>
-                    
-                    <div className="flex flex-col gap-3">
-                      <Button 
-                        onClick={() => router.push("/quanlygiaotrinh")} 
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        Đi đến Quản lý giáo trình
-                      </Button>
-                      
-                      <Button 
-                        onClick={() => router.push("/")} 
-                        variant="outline"
-                        className="w-full border-gray-300"
-                      >
-                        Về trang chủ
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          ) : (
-            <TaoBaiHocError
-              title="Không thể tải dữ liệu bài học"
-              message="Đã xảy ra lỗi khi tải danh sách từ vựng và khóa học. Vui lòng thử lại."
-              errorDetails={error || "Simulated error for demo purposes"}
-              onRetry={() => window.location.reload()}
-              onGoBack={() => router.push("/quanlybaihoc")}
-              onGoHome={() => router.push("/")}
-            />
-          )}
-        </>
-      )}
+        {/* Error State - Using unified ErrorHandler */}
+        {error && !loading && (
+          <ErrorHandler
+            type={error === "NO_LESSON_SELECTED" ? "NO_LESSON_SELECTED" : "GENERAL_ERROR"}
+            title={error === "NO_LESSON_SELECTED" ? "Chưa chọn danh sách bài học" : "Không thể tải dữ liệu bài học"}
+            message={error === "NO_LESSON_SELECTED" 
+              ? "Bạn cần chọn một danh sách bài học trước khi tạo bài học mới"
+              : "Đã xảy ra lỗi khi tải danh sách từ vựng và khóa học. Vui lòng thử lại."
+            }
+            errorDetails={error !== "NO_LESSON_SELECTED" ? error : undefined}
+            onRetry={error !== "NO_LESSON_SELECTED" ? () => window.location.reload() : undefined}
+            onGoBack={() => router.push("/quanlygiaotrinh")}
+            onGoHome={() => router.push("/")}
+          />
+        )}
 
-      {/* Main Content - only show when not loading and no error */}
-      {!loading && !error && (
-      <div className="pt-20 h-screen flex">
-        {/* Left Panel - Word Selection */}
-        <div className="w-1/3 bg-gray-100 border-r border-gray-300 overflow-y-auto">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Chọn từ vựng</h2>
-            <div className="mb-6">
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <CardHeader className="pb-4">
-                  <CardTitle>Bộ lọc</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center space-x-5">
-                    <div key={'all'} className="space-x-1 flex items-center">
-                      <label htmlFor="all">Tất cả</label>
-                      <Checkbox
-                        id="all"
-                        checked={isAllSelected}
-                        onCheckedChange={(checked) => {
-                          setIsAllSelected(checked === true);
-                          if (checked) {
-                            setLessonsFiltered(lessons);
-                          } else {
-                            setLessonsFiltered([]);
-                          }
-                        }}
-                      />
-                    </div>
-                    {lessons.map((lesson) => (
-                      <div key={lesson.id} className="space-x-1 flex items-center">
-                        <label htmlFor={`bai${lesson.id}`}>{lesson.title}</label>
-                        <Checkbox
-                          id={`bai${lesson.id}`}
-                          checked={
-                            isAllSelected
-                              ? false // hiển thị unchecked nếu đang chọn "Tất cả"
-                              : lessonsFiltered.some((l) => l.id === lesson.id)
-                          }
-                          onCheckedChange={(checked) => changeFilter(lesson.id, checked)}
-                        />
+        {/* Main Content - only show when not loading and no error */}
+        {!loading && !error && (
+          <div className="pt-20 h-screen flex">
+            {/* Left Panel - Word Selection */}
+            <div className="w-1/3 bg-gray-100 border-r border-gray-300 overflow-y-auto">
+              <div className="p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-6">Chọn từ vựng</h2>
+                <div className="mb-6">
+                  <Card className="bg-white shadow-sm border border-gray-200">
+                    <CardHeader className="pb-4">
+                      <CardTitle>Bộ lọc</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center space-x-5">
+                        <div key={'all'} className="space-x-1 flex items-center">
+                          <label htmlFor="all">Tất cả</label>
+                          <Checkbox
+                            id="all"
+                            checked={isAllSelected}
+                            onCheckedChange={(checked) => {
+                              setIsAllSelected(checked === true);
+                              if (checked) {
+                                setLessonsFiltered(lessons);
+                              } else {
+                                setLessonsFiltered([]);
+                              }
+                            }}
+                          />
+                        </div>
+                        {lessons.map((lesson) => (
+                          <div key={lesson.id} className="space-x-1 flex items-center">
+                            <label htmlFor={`bai${lesson.id}`}>{lesson.title}</label>
+                            <Checkbox
+                              id={`bai${lesson.id}`}
+                              checked={
+                                isAllSelected
+                                  ? false // hiển thị unchecked nếu đang chọn "Tất cả"
+                                  : lessonsFiltered.some((l) => l.id === lesson.id)
+                              }
+                              onCheckedChange={(checked) => changeFilter(lesson.id, checked)}
+                            />
+
+                          </div>
+                        ))}
 
                       </div>
-                    ))}
+                    </CardContent>
+                  </Card>
+                </div>
 
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                {lessonsFiltered.map((lesson) => (
+                  <div key={lesson.id} className="mb-6 bg-white rounded-lg">
+                    <div className="text-center p-2">{lesson.title}</div>
+                    <Table className="">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="">Từ</TableHead>
+                          <TableHead className="text-center">Độ phổ biến</TableHead>
+                          <TableHead className="max-w-[100px]">Thuộc</TableHead>
+                          <TableHead className="text-center">Xong</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {lesson.words.map((word) => {
+                          const wordLevel2 = findListWordLevel2(data, word.id)
+                          return (
+                            <React.Fragment key={word.id}>
 
-            {lessonsFiltered.map((lesson) => (
-              <div key={lesson.id} className="mb-6 bg-white rounded-lg">
-                <div className="text-center p-2">{lesson.title}</div>
-                <Table className="">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="">Từ</TableHead>
-                      <TableHead className="text-center">Độ phổ biến</TableHead>
-                      <TableHead className="max-w-[100px]">Thuộc</TableHead>
-                      <TableHead className="text-center">Xong</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lesson.words.map((word) => {
-                      const wordLevel2 = findListWordLevel2(data, word.id)
-                      return (
-                        <React.Fragment key={word.id}>
-
-                          <TableRow
-                            className={clsx("",
-                              courseWords.some((w) => w.wordId === word.id) &&
-                              "opacity-50 cursor-not-allowed"
-                            )}
-                            onClick={
-                              !courseWords.some((w) => w.wordId === word.id)
-                                ? () => handleWordSelection(lesson.id, word.id)
-                                : undefined
-                            }
-                          >
-                            <TableCell className="w-1/3">
-                              <div className=" text-sm font-medium text-gray-900">
-                                {word.word}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-sm text-center">{word.popularity}</div>
-                            </TableCell>
-
-                            <TableCell className="max-w-[100px]">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="text-sm text-gray-600 truncate cursor-default">
-                                      {word.belong}
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">
-                                    {word.belong}
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
-
-                            <TableCell className="flex justify-center items-center">
-                              {word.done && <Check className="text-green-500 w-4 h-4" />}
-                            </TableCell>
-                            <TableCell>
-                              <Checkbox
-                                id={word.id}
-                                disabled={courseWords.some((w) => w.wordId === word.id)}
-                                checked={word.selected}
-                                onCheckedChange={() =>
-                                  handleWordSelection(lesson.id, word.id)
-                                }
-                                onClick={(e) => e.stopPropagation()}
-                                className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 cursor-pointer"
-                              />
-                            </TableCell>
-                          </TableRow>
-
-                          {wordLevel2 &&
-                            (expandedWordIds[word.id]
-                              ? wordLevel2.words
-                              : wordLevel2.words.slice(0, 3)
-                            ).map((childWord) => (
                               <TableRow
-                                key={childWord.id}
-                                className={clsx(
-                                  "bg-gray-50",
-                                  courseWords.some((w) => w.wordId === childWord.id) &&
+                                className={clsx("",
+                                  courseWords.some((w) => w.wordId === word.id) &&
                                   "opacity-50 cursor-not-allowed"
                                 )}
                                 onClick={
-                                  !courseWords.some((w) => w.wordId === childWord.id)
-                                    ? () => handleWordSelection2(wordLevel2.id, childWord.id)
+                                  !courseWords.some((w) => w.wordId === word.id)
+                                    ? () => handleWordSelection(lesson.id, word.id)
                                     : undefined
                                 }
                               >
-                                <TableCell>
-                                  <div className="text-sm font-medium text-gray-900">
-                                    <span className="ml-5">
-                                      {childWord.word}
-                                    </span>
+                                <TableCell className="w-1/3">
+                                  <div className=" text-sm font-medium text-gray-900">
+                                    {word.word}
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-sm text-center">
-                                  {childWord.popularity}
+                                <TableCell>
+                                  <div className="text-sm text-center">{word.popularity}</div>
                                 </TableCell>
 
-                                <TableCell className="max-w-[100px] truncate">
+                                <TableCell className="max-w-[100px]">
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <div className="text-sm text-gray-600 truncate cursor-default">
-                                          {childWord.belong}
+                                          {word.belong}
                                         </div>
                                       </TooltipTrigger>
                                       <TooltipContent side="top">
-                                        {childWord.belong}
+                                        {word.belong}
                                       </TooltipContent>
                                     </Tooltip>
                                   </TooltipProvider>
                                 </TableCell>
 
                                 <TableCell className="flex justify-center items-center">
-                                  {childWord.done && <Check className="text-green-500 w-4 h-4" />}
+                                  {word.done && <Check className="text-green-500 w-4 h-4" />}
                                 </TableCell>
                                 <TableCell>
                                   <Checkbox
-                                    id={childWord.id}
-                                    disabled={courseWords.some((w) => w.wordId === childWord.id)}
-                                    checked={childWord.selected}
+                                    id={word.id}
+                                    disabled={courseWords.some((w) => w.wordId === word.id)}
+                                    checked={word.selected}
                                     onCheckedChange={() =>
-                                      handleWordSelection2(wordLevel2.id, childWord.id)
+                                      handleWordSelection(lesson.id, word.id)
                                     }
                                     onClick={(e) => e.stopPropagation()}
                                     className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 cursor-pointer"
                                   />
                                 </TableCell>
                               </TableRow>
-                            ))}
+
+                              {wordLevel2 &&
+                                (expandedWordIds[word.id]
+                                  ? wordLevel2.words
+                                  : wordLevel2.words.slice(0, 3)
+                                ).map((childWord) => (
+                                  <TableRow
+                                    key={childWord.id}
+                                    className={clsx(
+                                      "bg-gray-50",
+                                      courseWords.some((w) => w.wordId === childWord.id) &&
+                                      "opacity-50 cursor-not-allowed"
+                                    )}
+                                    onClick={
+                                      !courseWords.some((w) => w.wordId === childWord.id)
+                                        ? () => handleWordSelection2(wordLevel2.id, childWord.id)
+                                        : undefined
+                                    }
+                                  >
+                                    <TableCell>
+                                      <div className="text-sm font-medium text-gray-900">
+                                        <span className="ml-5">
+                                          {childWord.word}
+                                        </span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-sm text-center">
+                                      {childWord.popularity}
+                                    </TableCell>
+
+                                    <TableCell className="max-w-[100px] truncate">
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <div className="text-sm text-gray-600 truncate cursor-default">
+                                              {childWord.belong}
+                                            </div>
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top">
+                                            {childWord.belong}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </TableCell>
+
+                                    <TableCell className="flex justify-center items-center">
+                                      {childWord.done && <Check className="text-green-500 w-4 h-4" />}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Checkbox
+                                        id={childWord.id}
+                                        disabled={courseWords.some((w) => w.wordId === childWord.id)}
+                                        checked={childWord.selected}
+                                        onCheckedChange={() =>
+                                          handleWordSelection2(wordLevel2.id, childWord.id)
+                                        }
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 cursor-pointer"
+                                      />
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
 
 
-                          {wordLevel2 && wordLevel2.words.length > 3 && (
-                            <TableRow >
-                              <TableCell colSpan={5} className="text-end">
-                                <Button
-                                  onClick={() => toggleExpand(word.id)}
-                                  className="text-blue-600 text-sm hover:underline cursor-pointer"
-                                >
-                                  {expandedWordIds[word.id] ? "Thu gọn" : "Mở rộng"}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </React.Fragment>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-                {/* </CardContent> */}
-                {/* </Card> */}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Middle Panel - Action Control */}
-        <div className=" flex flex-col items-center justify-center mx-4">
-          <div className="text-center">
-            <Button
-              onClick={transferSelectedWords}
-              disabled={getSelectedCount() === 0}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
-            >
-              <ChevronRight className="w-4 h-4 mr-1" />
-              <span className="text-sm font-medium">chuyển tiếp</span>
-            </Button>
-            {getSelectedCount() > 0 && (
-              <div className="mb-3 text-xs text-gray-600 font-medium">{getSelectedCount()} từ đã chọn</div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Panel - Course Building Table */}
-        <div className="flex-1 border-l border-gray-300 bg-gray-100 overflow-y-auto">
-          <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Bài học mới ({courseWords.length} từ)</h2>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="course-name" className="text-sm font-medium text-gray-700">
-                    Tên bài học:
-                  </Label>
-                  <Input
-                    id="course-name"
-                    type="text"
-                    value={courseName}
-                    onChange={(e) => setCourseName(e.target.value)}
-                    placeholder="Nhập tên bài học"
-                    className="w-48 text-sm"
-                  />
-                </div>
-
-                {courseWords.length > 0 && (
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium">Thời gian ước chừng: </span>
-                    <span className="text-blue-600 font-semibold">{calculateEstimatedTime()}</span>
+                              {wordLevel2 && wordLevel2.words.length > 3 && (
+                                <TableRow >
+                                  <TableCell colSpan={5} className="text-end">
+                                    <Button
+                                      onClick={() => toggleExpand(word.id)}
+                                      className="text-blue-600 text-sm hover:underline cursor-pointer"
+                                    >
+                                      {expandedWordIds[word.id] ? "Thu gọn" : "Mở rộng"}
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </React.Fragment>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                    {/* </CardContent> */}
+                    {/* </Card> */}
                   </div>
-                )}
-                <Button
-                  onClick={createCourse}
-                  disabled={courseWords.length === 0 || !courseName.trim()}
-                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  <span className="font-medium">tạo bài học</span>
-                </Button>
+                ))}
               </div>
             </div>
 
-            {courseWords.length === 0 ? (
-              <Card className="bg-white border border-gray-200 shadow-sm">
-                <CardContent className="p-12 text-center">
-                  <div className="text-gray-400">
-                    <div className="text-5xl mb-4">📚</div>
-                    <p className="text-lg font-medium mb-2 text-gray-600">Chưa có từ vựng nào</p>
-                    <p className="text-sm text-gray-500">
-                      Chọn từ vựng từ panel bên trái và nhấn &quot;chuyển tiếp&quot; để thêm vào khóa học
-                    </p>
+            {/* Middle Panel - Action Control */}
+            <div className=" flex flex-col items-center justify-center mx-4">
+              <div className="text-center">
+                <Button
+                  onClick={transferSelectedWords}
+                  disabled={getSelectedCount() === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <ChevronRight className="w-4 h-4 mr-1" />
+                  <span className="text-sm font-medium">chuyển tiếp</span>
+                </Button>
+                {getSelectedCount() > 0 && (
+                  <div className="mb-3 text-xs text-gray-600 font-medium">{getSelectedCount()} từ đã chọn</div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Panel - Course Building Table */}
+            <div className="flex-1 border-l border-gray-300 bg-gray-100 overflow-y-auto">
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">Bài học mới ({courseWords.length} từ)</h2>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="course-name" className="text-sm font-medium text-gray-700">
+                        Tên bài học:
+                      </Label>
+                      <Input
+                        id="course-name"
+                        type="text"
+                        value={courseName}
+                        onChange={(e) => setCourseName(e.target.value)}
+                        placeholder="Nhập tên bài học"
+                        className="w-48 text-sm"
+                      />
+                    </div>
+
+                    {courseWords.length > 0 && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Thời gian ước chừng: </span>
+                        <span className="text-blue-600 font-semibold">{calculateEstimatedTime()}</span>
+                      </div>
+                    )}
+                    <Button
+                      onClick={createCourse}
+                      disabled={courseWords.length === 0 || !courseName.trim()}
+                      className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      <span className="font-medium">tạo bài học</span>
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <CardContent className="p-0">
-                  <DndContext
-                    collisionDetection={closestCenter}
-                    onDragEnd={({ active, over }) => {
-                      if (active.id !== over?.id) {
-                        const oldIndex = courseWords.findIndex((w) => w.wordId === active.id)
-                        const newIndex = courseWords.findIndex((w) => w.wordId === over?.id)
-                        setCourseWords((words) => arrayMove(words, oldIndex, newIndex))
-                      }
-                    }}
-                    sensors={sensors}
-                  >
-                    <Table className="">
-                      <TableHeader>
-                        <TableRow className="bg-gray-50 border-b border-gray-200">
-                          <TableHead className="font-semibold text-gray-700 py-4 px-6">Từ vựng</TableHead>
-                          <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
-                            số lần đọc tối đa
-                          </TableHead>
-                          <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
-                            số lần hiện IPA
-                          </TableHead>
-                          <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
-                            số lần hiện từ
-                          </TableHead>
-                          <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
-                            số lần hiện IPA và từ
-                          </TableHead>
-                          <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
-                            số lần đọc trong 1 lần
-                          </TableHead>
-                          <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">khoảng dừng</TableHead>
-                          <TableHead className="w-16 py-4 px-4"></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <SortableContext items={courseWords.map((w) => w.wordId)} strategy={verticalListSortingStrategy}>
-                        <TableBody className="">
-                          {courseWords.map((cw) => {
-                            const word = allWordsById[cw.wordId]
-                            if (!word) return null;
+                </div>
 
-                            return (<SortableRow
-                              key={word.id}
-                              word={word}
-                              updateCourseWord={updateCourseWord}
-                              removeCourseWord={removeCourseWord}
-                              courseWord={cw}
-                              updateMaxReadsCourseWord={updateMaxReadsCourseWord}
-                            />)
-                          })}
-                        </TableBody>
-                      </SortableContext>
+                {courseWords.length === 0 ? (
+                  <Card className="bg-white border border-gray-200 shadow-sm">
+                    <CardContent className="p-12 text-center">
+                      <div className="text-gray-400">
+                        <div className="text-5xl mb-4">📚</div>
+                        <p className="text-lg font-medium mb-2 text-gray-600">Chưa có từ vựng nào</p>
+                        <p className="text-sm text-gray-500">
+                          Chọn từ vựng từ panel bên trái và nhấn &quot;chuyển tiếp&quot; để thêm vào khóa học
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-white shadow-sm border border-gray-200">
+                    <CardContent className="p-0">
+                      <DndContext
+                        collisionDetection={closestCenter}
+                        onDragEnd={({ active, over }) => {
+                          if (active.id !== over?.id) {
+                            const oldIndex = courseWords.findIndex((w) => w.wordId === active.id)
+                            const newIndex = courseWords.findIndex((w) => w.wordId === over?.id)
+                            setCourseWords((words) => arrayMove(words, oldIndex, newIndex))
+                          }
+                        }}
+                        sensors={sensors}
+                      >
+                        <Table className="">
+                          <TableHeader>
+                            <TableRow className="bg-gray-50 border-b border-gray-200">
+                              <TableHead className="font-semibold text-gray-700 py-4 px-6">Từ vựng</TableHead>
+                              <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
+                                số lần đọc tối đa
+                              </TableHead>
+                              <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
+                                số lần hiện IPA
+                              </TableHead>
+                              <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
+                                số lần hiện từ
+                              </TableHead>
+                              <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
+                                số lần hiện IPA và từ
+                              </TableHead>
+                              <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">
+                                số lần đọc trong 1 lần
+                              </TableHead>
+                              <TableHead className="font-semibold text-gray-700 py-4 px-4 w-32 text-center">khoảng dừng</TableHead>
+                              <TableHead className="w-16 py-4 px-4"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <SortableContext items={courseWords.map((w) => w.wordId)} strategy={verticalListSortingStrategy}>
+                            <TableBody className="">
+                              {courseWords.map((cw) => {
+                                const word = allWordsById[cw.wordId]
+                                if (!word) return null;
 
-                    </Table>
-                  </DndContext>
-                </CardContent>
-              </Card>
-            )}
+                                return (<SortableRow
+                                  key={word.id}
+                                  word={word}
+                                  updateCourseWord={updateCourseWord}
+                                  removeCourseWord={removeCourseWord}
+                                  courseWord={cw}
+                                  updateMaxReadsCourseWord={updateMaxReadsCourseWord}
+                                />)
+                              })}
+                            </TableBody>
+                          </SortableContext>
+
+                        </Table>
+                      </DndContext>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      )}
+        )}
       </div>
     </NoCopyWrapper>
   )

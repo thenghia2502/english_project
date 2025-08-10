@@ -52,10 +52,10 @@
         "showWord": "1",
         "showIpaAndWord": "2",
         "readsPerRound": "6",
-        "progress": "6"
+        "progress": "3"
       }
     ],
-    "done": "100",
+    "done": "75",
     "lessonListId": "56ac8013-487b-4257-80e1-f00b44b18ea1",
     "createdAt": "2025-08-01T08:18:55.033Z"
   }
