@@ -30,6 +30,8 @@ interface ErrorHandlerProps {
   onGoBack?: () => void
   onGoHome?: () => void
   onGoToSettings?: () => void
+  onActionButton?: () => void
+  labelActionButton?: string
   className?: string
 }
 
@@ -43,6 +45,8 @@ export default function ErrorHandler({
   onGoBack,
   onGoHome,
   onGoToSettings,
+  onActionButton,
+  labelActionButton,
   className = ""
 }: ErrorHandlerProps) {
 
@@ -52,7 +56,7 @@ export default function ErrorHandler({
       'tao-bai-hoc': {
         title: "Chưa chọn danh sách bài học",
         message: "Bạn cần chọn một danh sách bài học trước khi tạo bài học mới",
-        guide: "Hãy vào trang quản lý giáo trình để chọn danh sách bài học mà bạn muốn tạo bài học từ đó",
+        guide: "Hãy vào trang quản lý giáo trình để chọn giáo trình tùy chỉnh mà bạn muốn tạo bài học từ đó",
         buttonText: "Đi đến Quản lý giáo trình"
       },
       'quan-ly-bai-hoc': {
@@ -117,15 +121,22 @@ export default function ErrorHandler({
               </div>
 
               <div className="flex flex-col gap-3">
+                {onActionButton && (
+                  <button
+                    onClick={onActionButton}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
+                  >
+                    {labelActionButton || "Thực hiện hành động"}
+                  </button>
+                )}
                 {onGoBack && (
                   <button
                     onClick={onGoBack}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors"
                   >
-                    {config.buttonText}
+                    Quay lại
                   </button>
                 )}
-
                 {onGoHome && (
                   <button
                     onClick={onGoHome}
@@ -146,6 +157,7 @@ export default function ErrorHandler({
   if (type === 'NO_DATA_FOUND') {
     return (
       <div className={`min-h-screen bg-gray-100 flex items-center justify-center p-4 ${className}`}>
+
         <div className="w-full max-w-md">
           <div className="bg-white shadow-lg border border-gray-200 rounded-lg">
             <div className="text-center p-6">
@@ -159,9 +171,14 @@ export default function ErrorHandler({
 
               {(onRetry || onGoBack || onGoHome) && (
                 <div className="flex flex-col gap-3">
-                  {onRetry && (
+                  {/* {onRetry && (
                     <button onClick={onRetry} className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
                       Tải lại
+                    </button>
+                  )} */}
+                  {onActionButton && (
+                    <button onClick={onActionButton} className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg">
+                      {labelActionButton || "Thực hiện hành động"}
                     </button>
                   )}
                   {onGoBack && (

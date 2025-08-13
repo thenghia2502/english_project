@@ -7,109 +7,30 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { BookOpen, Trash2, GraduationCap, ChevronLeft, ChevronRight, Search, Play, Pen } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { Level, Curriculum, LessonList } from "@/lib/types"
+import { Level, Curriculum } from "@/types"
 import Loading from "@/components/ui/loading"
-import ErrorHandler from "@/components/ui/error-handler" // ✅ Thay thế ErrorState
+import ErrorHandler from "@/components/ui/error-handler"
+import { useCurriculums, useDeleteCurriculum } from "@/hooks/use-curriculum"
+import { useLessons, useDeleteLesson } from "@/hooks/use-lessons"
 
 export default function QuanLyGiaoTrinh() {
-    const [curriculums, setCurriculums] = useState<Curriculum[]>([])
-    const [lessonLists, setLessonLists] = useState<LessonList[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+    // React Query hooks for data fetching
+    const { data: curriculums = [], isLoading: curriculumsLoading, error: curriculumsError } = useCurriculums()
+    const { data: lessonLists = [], isLoading: lessonsLoading, error: lessonsError } = useLessons('names')
+    const deleteCurriculumMutation = useDeleteCurriculum()
+    const deleteLessonMutation = useDeleteLesson()
+
+    // Local state for UI
     const [carouselIndices, setCarouselIndices] = useState<{ [key: string]: number }>({})
     const [curriculumCarouselIndex, setCurriculumCarouselIndex] = useState(0)
     const [searchQuery, setSearchQuery] = useState("")
-    const [lessonSearchQuery, setLessonSearchQuery] = useState("")
+    const [lessonSectionSearchQuery, setLessonSectionSearchQuery] = useState("")
     const [curriculumSearchQueries, setCurriculumSearchQueries] = useState<{ [key: string]: string }>({})
     const router = useRouter()
 
-    /**
-     * Load dữ liệu ban đầu từ API với error handling tốt hơn
-     */
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setIsLoading(true)
-                setError(null) // ✅ Reset error khi bắt đầu fetch
-
-                // Fetch curriculums and lesson lists in parallel
-                const [curriculumsRes, lessonListsRes] = await Promise.all([
-                    fetch("/api/curriculum"),
-                    fetch("/api/danhsachtu")
-                ])
-
-                if (!curriculumsRes.ok) {
-                    throw new Error(`Không thể tải danh sách giáo trình. Status: ${curriculumsRes.status}`)
-                }
-
-                if (!lessonListsRes.ok) {
-                    throw new Error(`Không thể tải danh sách bài học. Status: ${lessonListsRes.status}`)
-                }
-
-                const [curriculumsData, lessonListsData] = await Promise.all([
-                    curriculumsRes.json(),
-                    lessonListsRes.json()
-                ])
-
-                // Validate data structure
-                if (!Array.isArray(curriculumsData)) {
-                    throw new Error("Dữ liệu giáo trình không đúng định dạng")
-                }
-
-                if (!Array.isArray(lessonListsData)) {
-                    throw new Error("Dữ liệu bài học không đúng định dạng")
-                }
-
-                // Fetch detailed data for each curriculum
-                const detailedCurriculums: Curriculum[] = []
-
-                for (const curriculum of curriculumsData) {
-                    try {
-                        const detailRes = await fetch(`/api/curriculum/${curriculum.id}`)
-                        if (detailRes.ok) {
-                            const detailData = await detailRes.json()
-                            detailedCurriculums.push({
-                                id: curriculum.id,
-                                title: curriculum.title,
-                                levels: detailData.levels || [],
-                                description: detailData.description || "",
-                                createdAt: detailData.createdAt || new Date().toISOString()
-                            })
-                        } else {
-                            // If detail fetch fails, return basic curriculum data
-                            detailedCurriculums.push({
-                                id: curriculum.id,
-                                title: curriculum.title,
-                                levels: [],
-                                description: "",
-                                createdAt: new Date().toISOString()
-                            })
-                        }
-                    } catch (detailError) {
-                        console.error(`Lỗi khi lấy chi tiết giáo trình ${curriculum.id}:`, detailError)
-                        // Return basic data if detail fetch fails
-                        detailedCurriculums.push({
-                            id: curriculum.id,
-                            title: curriculum.title,
-                            levels: [],
-                            description: "",
-                            createdAt: new Date().toISOString()
-                        })
-                    }
-                }
-
-                setCurriculums(detailedCurriculums)
-                setLessonLists(lessonListsData)
-            } catch (err) {
-                console.error("Lỗi khi tải dữ liệu:", err)
-                setError(err instanceof Error ? err.message : 'Có lỗi khi tải danh sách giáo trình. Vui lòng thử lại!')
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
-        fetchData()
-    }, [])
+    // Computed values
+    const isLoading = curriculumsLoading || lessonsLoading
+    const error = curriculumsError?.message || lessonsError?.message
 
     /**
      * Định dạng chuỗi ngày tháng thành định dạng tiếng Việt
@@ -132,19 +53,17 @@ export default function QuanLyGiaoTrinh() {
     }
 
     /**
-     * Xóa một giáo trình khỏi danh sách
+     * Xóa một giáo trình khỏi danh sách sử dụng React Query mutation
      * @param curriculumId - ID của giáo trình cần xóa
-     * TODO: Cần implement API delete thực tế
      */
     const deleteCurriculum = async (curriculumId: string) => {
         if (!confirm("Bạn có chắc chắn muốn xóa giáo trình này?")) return
 
         try {
-            // TODO: Implement delete API
-            const updatedCurriculums = curriculums.filter((curriculum) => curriculum.id !== curriculumId)
-            setCurriculums(updatedCurriculums)
-            alert("Xóa giáo trình thành công!")
-        } catch {
+            await deleteCurriculumMutation.mutateAsync(curriculumId)
+            // React Query sẽ tự động invalidate và refetch curriculums
+        } catch (error) {
+            console.error("Error deleting curriculum:", error)
             alert("Có lỗi khi xóa giáo trình!")
         }
     }
@@ -176,25 +95,18 @@ export default function QuanLyGiaoTrinh() {
     }
 
     /**
-     * Xóa một danh sách bài học thông qua API
-     * @param lessonId - ID của danh sách bài học cần xóa
+     * Xóa một Giáo trình tùy chỉnh sử dụng React Query mutation
+     * @param lessonId - ID của Giáo trình tùy chỉnh cần xóa
      */
     const deleteLessonList = async (lessonId: string) => {
-        if (!confirm("Bạn có chắc chắn muốn xóa danh sách bài học này?")) return
+        if (!confirm("Bạn có chắc chắn muốn xóa Giáo trình tùy chỉnh này?")) return
 
         try {
-            const res = await fetch(`/api/danhsachtu?id=${lessonId}`, {
-                method: 'DELETE'
-            })
-
-            if (res.ok) {
-                setLessonLists(prev => prev.filter(lesson => lesson.id !== lessonId))
-                alert("Xóa danh sách bài học thành công!")
-            } else {
-                throw new Error("Failed to delete lesson list")
-            }
-        } catch {
-            alert("Có lỗi khi xóa danh sách bài học!")
+            await deleteLessonMutation.mutateAsync(lessonId)
+            // React Query sẽ tự động invalidate và refetch lessons
+        } catch (error) {
+            console.error("Error deleting lesson:", error)
+            alert("Có lỗi khi xóa Giáo trình tùy chỉnh!")
         }
     }
 
@@ -220,10 +132,10 @@ export default function QuanLyGiaoTrinh() {
     }
 
     /**
-     * Lọc danh sách bài học theo curriculum ID và từ khóa tìm kiếm
+     * Lọc Giáo trình tùy chỉnh theo curriculum ID và từ khóa tìm kiếm
      * @param curriculumId - ID của giáo trình
      * @param searchQuery - Từ khóa tìm kiếm (tùy chọn)
-     * @returns Mảng các danh sách bài học thuộc về giáo trình đó và phù hợp với từ khóa
+     * @returns Mảng các Giáo trình tùy chỉnh thuộc về giáo trình đó và phù hợp với từ khóa
      */
     const getLessonsByCurriculumAndSearch = (curriculumId: string, searchQuery?: string) => {
         let lessons = lessonLists.filter(lesson => lesson.id_curriculum === curriculumId)
@@ -341,8 +253,8 @@ export default function QuanLyGiaoTrinh() {
                 <div className="px-6 py-4">
                     <div className="flex items-center justify-between">
                         <h1 className="text-xl font-bold text-gray-900">Quản lý giáo trình</h1>
-                        <Button onClick={() => router.push("/taodanhsachtu")} className="bg-blue-600 hover:bg-blue-700 text-white">
-                            Tạo danh sách từ
+                        <Button onClick={() => router.push("/taodanhsachbaihoc")} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            Tạo giáo trình tùy chỉnh
                         </Button>
                     </div>
                 </div>
@@ -395,7 +307,7 @@ export default function QuanLyGiaoTrinh() {
 
                         {/* ✅ Empty State for Curriculums - Sử dụng ErrorHandler */}
                         {getFilteredCurriculums(searchQuery).length === 0 ? (
-                            <ErrorHandler
+                            /*<ErrorHandler
                                 type="NO_DATA_FOUND"
                                 pageType="quan-ly-giao-trinh"
                                 title={searchQuery.trim() ? "Không tìm thấy giáo trình nào" : "Chưa có giáo trình nào"}
@@ -406,7 +318,20 @@ export default function QuanLyGiaoTrinh() {
                                 onRetry={() => window.location.reload()}
                                 onGoBack={() => router.push("/")}
                                 onGoHome={() => router.push("/")}
-                            />
+                            />*/
+                            <div className="relative">
+                                <Card className="box-border bg-white border border-gray-200 shadow-sm w-full flex " style={{ minHeight: '332px' }}>
+                                    <CardContent className="p-0 text-center flex flex-col justify-center flex-1" >
+                                        <BookOpen className="mx-auto h-8 w-8 text-gray-400 mb-3" />
+                                        <h4 className="text-sm font-medium text-gray-900 mb-2">
+                                            Không tìm thấy giáo trình nào
+                                        </h4>
+                                        <p className="text-xs text-gray-600">
+                                            Không có giáo trình nào khớp với từ khóa &ldquo;{searchQuery}&rdquo;
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </div>
                         ) : (
                             /* Curriculum Carousel */
                             <div className="relative">
@@ -502,6 +427,7 @@ export default function QuanLyGiaoTrinh() {
                                                                 </div>
 
                                                                 <div className="flex items-center gap-2 pt-2">
+                                                                    
                                                                     <Button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation()
@@ -511,7 +437,7 @@ export default function QuanLyGiaoTrinh() {
                                                                         size="sm"
                                                                     >
                                                                         <BookOpen className="w-4 h-4 mr-2" />
-                                                                        Tạo danh sách bài học
+                                                                        Tạo giáo trình tùy chỉnh
                                                                     </Button>
                                                                 </div>
                                                             </div>
@@ -573,43 +499,44 @@ export default function QuanLyGiaoTrinh() {
                     <div className="mx-auto mt-12">
                         <div className="mb-6 flex items-center justify-between">
                             <div>
-                                <h2 className="text-2xl font-semibold mb-2">Các danh sách bài học ({
+                                <h2 className="text-2xl font-semibold mb-2">Các Giáo trình tùy chỉnh ({
                                     curriculums.reduce((total, curriculum) => {
-                                        const effectiveSearchQuery = lessonSearchQuery.trim()
-                                            ? lessonSearchQuery
-                                            : getCurriculumSearchQuery(curriculum.id)
+                                        // Lọc theo lessonSectionSearchQuery nếu có
+                                        if (lessonSectionSearchQuery.trim()) {
+                                            const matchesCurriculum = curriculum.title.toLowerCase().includes(lessonSectionSearchQuery.toLowerCase())
+                                            if (!matchesCurriculum) return total
+                                        }
+                                        const effectiveSearchQuery = getCurriculumSearchQuery(curriculum.id)
                                         return total + getLessonsByCurriculumAndSearch(curriculum.id, effectiveSearchQuery).length
                                     }, 0)
                                 })</h2>
-                                <p className="text-gray-600">Quản lý các danh sách bài học được tạo từ giáo trình</p>
+                                <p className="text-gray-600">Quản lý các Giáo trình tùy chỉnh được tạo từ giáo trình</p>
                             </div>
 
-                            {/* Global Lesson Search Bar */}
+                            {/* Global Curriculum Search Bar for Lesson Section */}
                             <div className="relative w-80">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                                 <Input
                                     type="text"
-                                    placeholder="Tìm kiếm tất cả bài học..."
-                                    value={lessonSearchQuery}
+                                    placeholder="Lọc giáo trình trong phần này..."
+                                    value={lessonSectionSearchQuery}
                                     onChange={(e) => {
-                                        setLessonSearchQuery(e.target.value)
-                                        // Clear individual curriculum searches when global search is used
-                                        if (e.target.value.trim()) {
-                                            setCurriculumSearchQueries({})
-                                        }
+                                        setLessonSectionSearchQuery(e.target.value)
                                     }}
                                     className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
                         </div>
 
-                        {/* Group lessons by curriculum */}
-                        {curriculums.map((curriculum) => {
-                            // Use global search if it exists, otherwise use individual curriculum search
-                            const effectiveSearchQuery = lessonSearchQuery.trim()
-                                ? lessonSearchQuery
-                                : getCurriculumSearchQuery(curriculum.id)
-
+                        {/* Group lessons by curriculum - lọc theo lessonSectionSearchQuery */}
+                        {curriculums.filter(curriculum => {
+                            // Lọc curriculum theo lessonSectionSearchQuery nếu có
+                            if (lessonSectionSearchQuery.trim()) {
+                                return curriculum.title.toLowerCase().includes(lessonSectionSearchQuery.toLowerCase())
+                            }
+                            return true
+                        }).map((curriculum) => {
+                            const effectiveSearchQuery = getCurriculumSearchQuery(curriculum.id)
                             const curriculumLessons = getLessonsByCurriculumAndSearch(curriculum.id, effectiveSearchQuery)
 
                             // Show curriculum if it has lessons OR if there's an active search for this curriculum
@@ -623,7 +550,7 @@ export default function QuanLyGiaoTrinh() {
                                                 {curriculum.title}
                                             </h3>
                                             <p className="text-sm text-gray-600">
-                                                {curriculumLessons.length} danh sách bài học đã được tạo
+                                                {curriculumLessons.length} Giáo trình tùy chỉnh đã được tạo
                                                 {effectiveSearchQuery.trim() && (
                                                     <span className="text-blue-600 ml-1">
                                                         (đã lọc)
@@ -632,19 +559,17 @@ export default function QuanLyGiaoTrinh() {
                                             </p>
                                         </div>
 
-                                        {/* Individual Curriculum Search Bar - Only show if global search is not active */}
-                                        {!lessonSearchQuery.trim() && (
-                                            <div className="relative w-64">
-                                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                                <Input
-                                                    type="text"
-                                                    placeholder={`Tìm trong ${curriculum.title}...`}
-                                                    value={getCurriculumSearchQuery(curriculum.id)}
-                                                    onChange={(e) => setCurriculumSearchQuery(curriculum.id, e.target.value)}
-                                                    className="pl-10 pr-4 py-1.5 w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Individual Curriculum Search Bar */}
+                                        <div className="relative w-64">
+                                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                            <Input
+                                                type="text"
+                                                placeholder={`Tìm trong ${curriculum.title}...`}
+                                                value={getCurriculumSearchQuery(curriculum.id)}
+                                                onChange={(e) => setCurriculumSearchQuery(curriculum.id, e.target.value)}
+                                                className="pl-10 pr-4 py-1.5 w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
+                                        </div>
                                     </div>
 
                                     {/* Show empty state for individual curriculum search */}
@@ -710,7 +635,7 @@ export default function QuanLyGiaoTrinh() {
                                                                                         deleteLessonList(lesson.id)
                                                                                     }}
                                                                                     className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
-                                                                                    title="Xóa danh sách bài học"
+                                                                                    title="Xóa Giáo trình tùy chỉnh"
                                                                                 >
                                                                                     <Trash2 className="w-3 h-3" />
                                                                                 </Button>
@@ -758,7 +683,7 @@ export default function QuanLyGiaoTrinh() {
                                                                                     title="Tạo bài học mới"
                                                                                 >
                                                                                     <Play className="w-3 h-3" />
-                                                                                    Tạo mới
+                                                                                    Tạo bài học
                                                                                 </Button>
                                                                                 <Button
 
@@ -780,11 +705,11 @@ export default function QuanLyGiaoTrinh() {
                                                                                         const savedData = sessionStorage.getItem('editLessonData')
                                                                                         console.log('Verified saved data:', savedData)
 
-                                                                                        // Chuyển đến trang edit với URL có minimal params làm fallback
-                                                                                        router.push(`/taodanhsachbaihoc?mode=edit&id=${lesson.id}`)
+                                                                                        // Chuyển đến trang edit với URL đơn giản
+                                                                                        router.push(`/taodanhsachbaihoc?mode=edit`)
                                                                                     }}
                                                                                     className="flex-1 text-white bg-blue-600 hover:bg-blue-700 p-1"
-                                                                                    title="Chỉnh sửa danh sách bài học"
+                                                                                    title="Chỉnh sửa Giáo trình tùy chỉnh"
                                                                                 >
                                                                                     <Pen className="w-3 h-3" />
                                                                                     Chỉnh sửa
@@ -851,10 +776,16 @@ export default function QuanLyGiaoTrinh() {
 
                         {/* Empty State for Lesson Lists */}
                         {(() => {
-                            const hasAnyLessons = curriculums.some(curriculum => {
-                                const effectiveSearchQuery = lessonSearchQuery.trim()
-                                    ? lessonSearchQuery
-                                    : getCurriculumSearchQuery(curriculum.id)
+                            // Lọc curriculums theo lessonSectionSearchQuery
+                            const filteredCurriculumsForLessons = curriculums.filter(curriculum => {
+                                if (lessonSectionSearchQuery.trim()) {
+                                    return curriculum.title.toLowerCase().includes(lessonSectionSearchQuery.toLowerCase())
+                                }
+                                return true
+                            })
+
+                            const hasAnyLessons = filteredCurriculumsForLessons.some(curriculum => {
+                                const effectiveSearchQuery = getCurriculumSearchQuery(curriculum.id)
                                 return getLessonsByCurriculumAndSearch(curriculum.id, effectiveSearchQuery).length > 0
                             })
 
@@ -864,35 +795,34 @@ export default function QuanLyGiaoTrinh() {
                                         <CardContent className="p-12 text-center flex flex-col justify-center" style={{ minHeight: '400px' }}>
                                             <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                                             <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                                Chưa có danh sách bài học nào
+                                                Chưa có Giáo trình tùy chỉnh nào
                                             </h3>
                                             <p className="text-gray-600 mb-6">
-                                                Tạo danh sách bài học từ các giáo trình ở trên
+                                                Tạo Giáo trình tùy chỉnh từ các giáo trình ở trên
                                             </p>
                                             <Button
                                                 onClick={() => router.push("/taodanhsachtu")}
                                                 className="bg-blue-600 hover:bg-blue-700 text-white"
                                             >
-                                                Tạo danh sách bài học mới
+                                                Tạo Giáo trình tùy chỉnh mới
                                             </Button>
                                         </CardContent>
                                     </Card>
                                 )
                             }
 
-                            if (!hasAnyLessons && (lessonSearchQuery.trim() || Object.values(curriculumSearchQueries).some(q => q.trim()))) {
-                                const activeSearch = lessonSearchQuery.trim() ||
-                                    Object.entries(curriculumSearchQueries).find(([, query]) => query.trim())?.[1] || ""
-
+                            // Chỉ hiển thị thông báo empty state khi tìm kiếm giáo trình (lessonSectionSearchQuery)
+                            // Không hiển thị khi chỉ tìm kiếm bài học trong curriculum riêng lẻ
+                            if (!hasAnyLessons && lessonSectionSearchQuery.trim()) {
                                 return (
                                     <Card className="bg-white border border-gray-200 shadow-sm">
                                         <CardContent className="p-12 text-center flex flex-col justify-center" style={{ minHeight: '400px' }}>
                                             <BookOpen className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                                             <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                                Không tìm thấy bài học nào
+                                                Không tìm thấy giáo trình nào
                                             </h3>
                                             <p className="text-gray-600 mb-6">
-                                                Không có bài học nào khớp với từ khóa &ldquo;{activeSearch}&rdquo;
+                                                Không có giáo trình nào khớp với từ khóa &ldquo;{lessonSectionSearchQuery}&rdquo;
                                             </p>
                                         </CardContent>
                                     </Card>

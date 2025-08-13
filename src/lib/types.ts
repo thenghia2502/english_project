@@ -32,6 +32,7 @@ export interface Course {
   createdAt: string
   estimatedTime: string
   done: string
+  lessonListId: string
 }
 
 export type FormValues = {

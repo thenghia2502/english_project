@@ -38,6 +38,29 @@ const lessonsData: { [key: string]: LessonUnit[] } = {
       ],
     }
   ],
+  // Lesson cho ID 88bbd3c4-82ac-4c56-8fdf-003be40ac023
+  "88bbd3c4-82ac-4c56-8fdf-003be40ac023": [
+    {
+      id: "unit-advanced-1",
+      title: "Advanced Vocabulary",
+      words: [
+        { id: "w9", word: "sophisticated", meaning: "tinh tế, phức tạp", ipa: "/səˈfɪstɪkeɪtɪd/", selected: false, done: false, popularity: 2, belong: "" },
+        { id: "w10", word: "extraordinary", meaning: "phi thường", ipa: "/ɪkˈstrɔːdnri/", selected: false, done: false, popularity: 2, belong: "" },
+        { id: "w11", word: "incredible", meaning: "không thể tin được", ipa: "/ɪnˈkredəbl/", selected: false, done: false, popularity: 2, belong: "" },
+        { id: "w12", word: "magnificent", meaning: "tráng lệ", ipa: "/mæɡˈnɪfɪsnt/", selected: false, done: false, popularity: 2, belong: "" },
+      ],
+    },
+    {
+      id: "unit-advanced-2", 
+      title: "Business English",
+      words: [
+        { id: "w13", word: "management", meaning: "quản lý", ipa: "/ˈmænɪdʒmənt/", selected: false, done: false, popularity: 2, belong: "" },
+        { id: "w14", word: "strategy", meaning: "chiến lược", ipa: "/ˈstrætədʒi/", selected: false, done: false, popularity: 2, belong: "" },
+        { id: "w15", word: "development", meaning: "phát triển", ipa: "/dɪˈveləpmənt/", selected: false, done: false, popularity: 2, belong: "" },
+        { id: "w16", word: "innovation", meaning: "sự đổi mới", ipa: "/ˌɪnəˈveɪʃn/", selected: false, done: false, popularity: 2, belong: "" },
+      ],
+    }
+  ],
   // Thêm một lesson test khác
   "test-lesson-id": [
     {
@@ -51,10 +74,11 @@ const lessonsData: { [key: string]: LessonUnit[] } = {
 };
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
     
     console.log('Requested lesson ID:', id);
     

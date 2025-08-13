@@ -15,7 +15,9 @@ interface Word {
 const level2Words: Record<string, Word[]> = {
   w1: [
     { id: "w1l21", word: "homeless", meaning: "vô gia cư", ipa: "/ˈhəʊmləs/", selected: false, done: false, popularity: 2, belong: "" },
-    { id: "w1l22", word: "homework", meaning: "bài tập về nhà", ipa: "/ˈhəʊmwɜːk/", selected: false, done: false, popularity: 2, belong: "" }
+    { id: "w1l22", word: "homework", meaning: "bài tập về nhà", ipa: "/ˈhəʊmwɜːk/", selected: false, done: false, popularity: 2, belong: "" },
+    { id: "w1l23", word: "homemade", meaning: "tự làm ở nhà", ipa: "/ˌhəʊmˈmeɪd/", selected: false, done: false, popularity: 2, belong: "" },
+    { id: "w1l24", word: "homecoming", meaning: "sự trở về nhà", ipa: "/ˈhəʊmˌkʌmɪŋ/", selected: false, done: false, popularity: 2, belong: "" }
   ],
   w2: [
     { id: "w2l21", word: "schoolbag", meaning: "cặp sách", ipa: "/ˈskuːlbæɡ/", selected: false, done: false, popularity: 2, belong: "" }

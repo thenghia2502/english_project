@@ -69,13 +69,22 @@ export async function GET() {
             }
 
             // Convert unit IDs to names
-            const exerciseNames = lessonItem.list_exercise.map(unitId => {
-                const unit = level.units.find(u => u.id === unitId);
-                if (!unit) {
-                    console.warn(`Unit not found: ${unitId} in level ${lessonItem.id_level}`);
-                    return unitId; // Return original ID if unit not found
+            const exerciseNames = lessonItem.list_exercise.map(unitIdOrName => {
+                // First, try to find by ID (for items stored as unit-1, unit-2, etc.)
+                const unitById = level.units.find(u => u.id === unitIdOrName);
+                if (unitById) {
+                    return unitById.name;
                 }
-                return unit.name;
+                
+                // If not found by ID, try to find by name (for items already stored as names)
+                const unitByName = level.units.find(u => u.name === unitIdOrName);
+                if (unitByName) {
+                    return unitByName.name; // Return the name itself
+                }
+                
+                // If neither ID nor name matches, log warning and return original
+                console.warn(`Unit not found: ${unitIdOrName} in level ${lessonItem.id_level}`);
+                return unitIdOrName; // Return original value if unit not found
             });
 
             return {

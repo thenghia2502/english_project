@@ -5,8 +5,11 @@
     "id_curriculum": "curriculum-1",
     "id_level": "level-1",
     "list_exercise": [
-      "unit-1",
-      "unit-5"
+      "Introducing yourself",
+      "Daily routines",
+      "Countries",
+      "Food and drink",
+      "Talking about yourself"
     ]
   },
   {
@@ -101,6 +104,47 @@
       "Email Etiquette",
       "Meetings and Presentations",
       "Negotiation Skills"
+    ]
+  },
+  {
+    "id": "0cf37567-047d-4f7c-be75-bfe7592f02ac",
+    "name": "testest1",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Introducing yourself",
+      "Daily routines"
+    ]
+  },
+  {
+    "id": "88bbd3c4-82ac-4c56-8fdf-003be40ac023",
+    "name": "test2",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Introducing yourself",
+      "Daily routines"
+    ]
+  },
+  {
+    "id": "7e2b9548-bb85-4c35-8d4a-4192cdffaa40",
+    "name": "gghghg",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-2",
+    "list_exercise": [
+      "Daily Activities",
+      "Health and Fitness",
+      "Food and Drink"
+    ]
+  },
+  {
+    "id": "64f8ad23-0f22-4ff3-ac68-0a6d3c42b115",
+    "name": "ddddd",
+    "id_curriculum": "curriculum-1",
+    "id_level": "level-1",
+    "list_exercise": [
+      "Next steps in learning",
+      "Final thoughts"
     ]
   }
 ]

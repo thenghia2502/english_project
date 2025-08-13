@@ -26,21 +26,12 @@ import { CSS } from '@dnd-kit/utilities'
 import clsx from "clsx"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import React from "react"
-import { Lesson } from "../api/lessons/route"
-import NoCopyWrapper from "@/components/no-copy-wrapper"
+// import { Lesson } from "@/types" // TODO: Use when refactoring
 import Loading from "@/components/ui/loading"
 import ErrorHandler from "../../components/ui/error-handler"
-
-interface Word {
-  "id": string
-  "word": string
-  "meaning": string
-  "ipa": string
-  "selected": boolean
-  "done": boolean,
-  "popularity": number,
-  "belong": string
-}
+import { useLesson } from "@/hooks/use-lessons"
+import { useCourses, useCreateCourse } from "@/hooks/use-courses"
+import { Word } from "@/types"
 
 interface CourseWord {
   wordId: string
@@ -53,23 +44,6 @@ interface CourseWord {
   progress: string
 }
 
-// interface CourseState {
-//   courseId: string;
-
-//   currentWordIndex: number;         // chỉ số của từ đang học trong danh sách
-//   currentRound: number;             // vòng lặp hiện tại
-//   isPlaying: boolean;               // có đang phát audio không
-//   isPaused: boolean;                // đang tạm dừng không
-//   isFinished: boolean;             // đã hoàn thành khóa học chưa
-
-//   totalTimeSpent: number;          // tổng thời gian học (giây)
-//   wordReadCounts: Record<string, number>; // số lần đã đọc cho từng wordId
-
-//   // có thể mở rộng thêm nếu bạn cần:
-//   loopMode: boolean;               // có bật chế độ lặp không
-//   startTime?: number;              // timestamp bắt đầu học
-// }
-
 interface Course {
   id: string
   name: string
@@ -79,21 +53,286 @@ interface Course {
   done: string
 }
 
+// TODO: MAJOR REFACTORING NEEDED - HIGH PRIORITY
+// Trang này có logic rất phức tạp và cần refactor hoàn toàn để sử dụng React Query
+// Hiện tại giữ nguyên để tránh break functionality
+// Khi refactor cần:
+// 1. Sử dụng useLesson(lessonId) thay cho manual fetch
+// 2. Sử dụng useCourses() thay cho manual fetch  
+// 3. Sử dụng useCreateCourse() mutation thay cho manual POST
+// 4. Cleanup tất cả manual state management
+// 5. Fix type conflicts giữa LocalWord và Word interface
+// 6. Đảm bảo drag & drop functionality vẫn hoạt động
+
+// Revert to original structure to maintain functionality
+interface LocalWord extends Word {
+  "selected": boolean
+  "done": boolean,
+  "popularity": number,
+  "belong": string
+  "ipa": string // Add ipa property for compatibility
+}
+
+interface LessonUnit {
+  id: string
+  title: string
+  words: {
+    id: string
+    word: string
+    meaning: string
+    ipa: string
+    selected: boolean
+    done: boolean
+    popularity: number
+    belong: string
+  }[]
+}
+
+interface LessonWithWords {
+  id: string
+  title: string
+  words: LocalWord[]
+}
+
 export default function TaoKhoaHocPage() {
-  const [lessons, setLessons] = useState<Lesson[]>([])
+  // Get URL params
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+  const lessonId = searchParams.get("id")
+  const mode = searchParams.get("mode") // Check for edit mode
+  
+  // State for edit mode
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editCourseData, setEditCourseData] = useState<{
+    id: string
+    name: string
+    lessonListId: string
+    wordDetails: Array<{
+      wordId: string
+      progress: string
+      word: string
+      meaning: string
+      pronunciation: string
+    }>
+  } | null>(null)
+  const [actualLessonId, setActualLessonId] = useState<string | null>(lessonId)
+  
+  // Handle edit mode - load data from sessionStorage
+  useEffect(() => {
+    if (mode === 'edit') {
+      setIsEditMode(true)
+      
+      // Try editCourseData first (from quanlybaihoc)
+      let storedData = sessionStorage.getItem('editCourseData')
+      let dataKey = 'editCourseData'
+      
+      // If not found, try editLessonData (from taodanhsachbaihoc)
+      if (!storedData) {
+        storedData = sessionStorage.getItem('editLessonData')
+        dataKey = 'editLessonData'
+      }
+      
+      if (storedData) {
+        try {
+          const courseData = JSON.parse(storedData)
+          
+          if (dataKey === 'editLessonData') {
+            // Convert editLessonData format to editCourseData format
+            const convertedData = {
+              id: courseData.id,
+              name: courseData.name,
+              lessonListId: courseData.lessonListId,
+              wordDetails: courseData.exercises ? courseData.exercises.map((exerciseName: string, index: number) => ({
+                wordId: `word_${index}`, // Temporary ID, will be resolved when lesson loads
+                progress: "0",
+                word: exerciseName,
+                meaning: "",
+                pronunciation: ""
+              })) : []
+            }
+            setEditCourseData(convertedData)
+          } else {
+            setEditCourseData(courseData)
+          }
+          
+          // Set lesson ID from editCourseData or editLessonData
+          if (courseData.lessonListId) {
+            setActualLessonId(courseData.lessonListId)
+          }
+          
+          // Set course name from edit data
+          setCourseName(courseData.name || '')
+          
+        } catch (error) {
+          console.error('Error parsing edit course data:', error)
+        }
+      }
+    } else {
+      setIsEditMode(false)
+      setEditCourseData(null)
+      setActualLessonId(lessonId)
+    }
+  }, [mode, lessonId])
+  
+  // React Query hooks - use actualLessonId instead of lessonId
+  const { data: lesson, isLoading: isLessonLoading, error: lessonError } = useLesson(actualLessonId || '')
+  const { data: courses = [], isLoading: isCoursesLoading, error: coursesError } = useCourses()
+  const createCourseMutation = useCreateCourse()
+
+  // Local state for complex UI functionality
   const [data, setData] = useState<{
-    [key: string]: Word[]
+    [key: string]: LocalWord[]
   }>({})
   const [courseWords, setCourseWords] = useState<CourseWord[]>([])
   const [courseName, setCourseName] = useState("")
-  const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [expandedWordIds, setExpandedWordIds] = useState<Record<string, boolean>>({})
+  const [isAllSelected, setIsAllSelected] = useState(true)
+  const [lessonsFiltered, setLessonsFiltered] = useState<LessonWithWords[]>([])
+  
   const router = useRouter()
 
+  // Derived state
+  const loading = isLessonLoading || isCoursesLoading
+  // 🔧 In edit mode, don't show NO_LESSON_SELECTED error even if actualLessonId is null initially
+  const error = lessonError || coursesError || 
+    (!isEditMode && !actualLessonId ? "NO_LESSON_SELECTED" : null)
+  
+  // Pre-populate courseWords in edit mode
+  useEffect(() => {
+    if (!isEditMode) return
+    if (courseWords.length > 0) return // Already populated
+    
+    // Check if all required data is available
+    const editCourseDataId = editCourseData?.id
+    const hasLessonsData = lessonsFiltered.length > 0
+    
+    if (!editCourseDataId || !actualLessonId || !hasLessonsData) return
+    
+    // Wait for data to be populated
+    const hasDataWords = Object.keys(data).length > 0
+    if (!hasDataWords) return
+    
+    // Create a word lookup map from lesson data
+    const wordLookup: Record<string, LocalWord> = {}
+    
+    // Add words from lessons
+    lessonsFiltered.forEach(lessonItem => {
+      lessonItem.words.forEach(word => {
+        wordLookup[word.word] = word
+        wordLookup[word.id] = word
+      })
+    })
+    
+    // Add words from level2 data
+    Object.values(data).forEach(words => {
+      words.forEach(word => {
+        wordLookup[word.word] = word
+        wordLookup[word.id] = word
+      })
+    })
+    
+    // Convert editCourseData to CourseWord format
+    let editCourseWords: CourseWord[] = []
+    
+    if (editCourseData.wordDetails && editCourseData.wordDetails.length > 0) {
+      // From editCourseData (quanlybaihoc route)
+      editCourseWords = editCourseData.wordDetails.map(wordDetail => ({
+        wordId: wordDetail.wordId,
+        progress: wordDetail.progress,
+        pauseTime: "3000",
+        maxReads: "3",
+        showIpa: "2",
+        showWord: "1", 
+        showIpaAndWord: "0",
+        readsPerRound: "1"
+      }))
+    } else {
+      // From editLessonData (taodanhsachbaihoc route) - use words array directly
+      const storedLessonData = sessionStorage.getItem('editLessonData')
+      if (storedLessonData) {
+        try {
+          const lessonData = JSON.parse(storedLessonData)
+          if (lessonData.words && Array.isArray(lessonData.words)) {
+            // Set courseWords directly from the words array
+            editCourseWords = lessonData.words.map((word: CourseWord) => ({
+              wordId: word.wordId,
+              progress: word.progress || "0",
+              pauseTime: word.pauseTime || "3000",
+              maxReads: word.maxReads || "3",
+              showIpa: word.showIpa || "2",
+              showWord: word.showWord || "1", 
+              showIpaAndWord: word.showIpaAndWord || "0",
+              readsPerRound: word.readsPerRound || "1"
+            }))
+          }
+        } catch (error) {
+          console.error('Error parsing editLessonData:', error)
+        }
+      }
+    }
+    
+    // Only update if we have words
+    if (editCourseWords.length > 0) {
+      setCourseWords(editCourseWords)
+      
+      // Mark corresponding words as selected in lessonsFiltered and update belong field
+      setLessonsFiltered(prev => 
+        prev.map(lesson => ({
+          ...lesson,
+          words: lesson.words.map(word => ({
+            ...word,
+            selected: editCourseWords.some(cw => cw.wordId === word.id),
+            belong: editCourseWords.some(cw => cw.wordId === word.id) 
+              ? (word.belong ? `${word.belong}, ${courseName || editCourseData.name}` : courseName || editCourseData.name)
+              : word.belong
+          }))
+        }))
+      )
+      
+      // Mark corresponding words as selected in data and update belong field
+      setData(prev => {
+        const newData = { ...prev }
+        Object.keys(newData).forEach(key => {
+          newData[key] = newData[key].map(word => ({
+            ...word,
+            selected: editCourseWords.some(cw => cw.wordId === word.id),
+            belong: editCourseWords.some(cw => cw.wordId === word.id) 
+              ? (word.belong ? `${word.belong}, ${courseName || editCourseData.name}` : courseName || editCourseData.name)
+              : word.belong
+          }))
+        })
+        return newData
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditMode, courseWords.length, lessonsFiltered.length, Object.keys(data).length])
+  
+  // Convert lesson data to expected format with proper type safety
+  const lessons = useMemo((): LessonWithWords[] => {
+    if (!lesson || !Array.isArray(lesson)) return []
+    
+    // API trả về mảng các units, convert thành LessonWithWords format
+    return (lesson as LessonUnit[]).map((unit) => {
+      const wordsWithLocalProps: LocalWord[] = unit.words.map((word) => ({
+        ...word,
+        pronunciation: word.ipa, // Ensure pronunciation is available
+        selected: false,
+        done: false,
+        popularity: word.popularity || 0,
+        belong: word.belong || "",
+        ipa: word.ipa || ""
+      }))
+      
+      return {
+        id: unit.id,
+        title: unit.title,
+        words: wordsWithLocalProps
+      }
+    })
+  }, [lesson])
+
   // ✅ Helper functions để update word status
-  const updateWordStatus = useCallback((words: Word[], courses: Course[]) => {
-    return words.map((word: Word) => {
+  const updateWordStatus = useCallback((words: LocalWord[], courses: Course[]) => {
+    return words.map((word: LocalWord) => {
       const matcheds = findAllMatchedWords(word.id, courses);
       const belong = findBelongLessons(word.id, courses);
 
@@ -110,65 +349,38 @@ export default function TaoKhoaHocPage() {
     });
   }, []);
 
+  // Update lessons when data changes
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
+    if (!lesson || !Array.isArray(lesson) || !courses.length) return
 
-        const searchParams = new URLSearchParams(window.location.search);
-        const id = searchParams.get("id");
-        
-        // ✅ Check ID trước tiên
-        if (!id) {
-          setError("NO_LESSON_SELECTED")
-          return
-        }
+    // ✅ Lấy wordId của các từ đã học
+    const learnedWordIds = new Set(
+      courses
+        .filter(course => course.done === "100")
+        .flatMap(course => course.words.map(word => word.wordId))
+    )
 
-        // ✅ Fetch tất cả data cần thiết
-        const [lessonsRes, coursesRes] = await Promise.all([
-          fetch(`/api/lessons/${id}`),
-          fetch(`/api/courses`) // ✅ Sửa từ /api/coursess thành /api/courses
-        ])
+    // ✅ Cập nhật lessons với trạng thái học - xử lý mảng units
+    const finalLessons: LessonWithWords[] = (lesson as LessonUnit[]).map((unit) => {
+      const wordsWithLearnedStatus: LocalWord[] = unit.words.map((word) => ({
+        ...word,
+        pronunciation: word.ipa,
+        selected: false,
+        done: learnedWordIds.has(word.id),
+        popularity: word.popularity || 0,
+        belong: word.belong || "",
+        ipa: word.ipa || ""
+      }));
+      
+      return {
+        id: unit.id,
+        title: unit.title,
+        words: updateWordStatus(wordsWithLearnedStatus, courses)
+      };
+    });
 
-        if (!lessonsRes.ok) throw new Error('Failed to fetch lessons')
-        if (!coursesRes.ok) throw new Error('Failed to fetch courses')
-
-        const lessonsData = await lessonsRes.json()
-        const coursesData: Course[] = await coursesRes.json()
-
-        // ✅ Lấy wordId của các từ đã học
-        const learnedWordIds = new Set(
-          coursesData
-            .filter(course => course.done === "100")
-            .flatMap(course => course.words.map(word => word.wordId))
-        )
-
-        // ✅ Cập nhật lessons với trạng thái học
-        const finalLessons = lessonsData.map((lesson: Lesson) => {
-          const wordsWithLearnedStatus = lesson.words.map((word: Word) => ({
-            ...word,
-            done: learnedWordIds.has(word.id)
-          }));
-          
-          return {
-            ...lesson,
-            words: updateWordStatus(wordsWithLearnedStatus, coursesData)
-          };
-        });
-
-        setLessons(finalLessons)
-        setCourses(coursesData)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred')
-        console.error('Error fetching data:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [updateWordStatus])
+    setLessonsFiltered(finalLessons)
+  }, [lesson, courses, updateWordStatus])
 
   // ✅ Loại bỏ useEffect thứ hai để tránh conflict
   // useEffect(() => {
@@ -178,54 +390,22 @@ export default function TaoKhoaHocPage() {
   //   fetchapi();
   // }, [setCourses]);
 
-  // ✅ Sửa useEffect cuối để chỉ chạy khi có courses và lessons
-  useEffect(() => {
-    if (!courses || courses.length === 0 || !lessons || lessons.length === 0) return;
 
-    console.log("✅ courses ready:", courses);
-
-    setLessonsFiltered(() => {
-      const updatedLessons = lessons.map((lesson) => {
-        const updatedWords = lesson.words.map((word) => {
-          const matcheds = findAllMatchedWords(word.id, courses);
-          const belong = findBelongLessons(word.id, courses);
-
-          if (matcheds.length < 1) return word;
-
-          const isDone = matcheds.some(
-            (matched) => Number(matched.progress || 0) >= Number(matched.maxReads || 0)
-          );
-          return {
-            ...word,
-            done: isDone,
-            belong: belong ?? "",
-          };
-        });
-
-        return {
-          ...lesson,
-          words: updatedWords,
-        };
-      });
-
-      return updatedLessons;
-    });
-  }, [courses, lessons]);
 
   useEffect(() => {
-    if (lessons.length === 0) return
+    if (lessonsFiltered.length === 0) return
 
     const fetchLevel2Words = async () => {
-      const requests: Promise<[string, Word[] | null]>[] = []
+      const requests: Promise<[string, LocalWord[] | null]>[] = []
 
-      for (const lesson of lessons) {
+      for (const lesson of lessonsFiltered) {
         for (const word of lesson.words) {
           const promise = fetch(`/api/word/level2/list/${word.id}`)
             .then(async (res) => {
               if (!res.ok) return [word.id, null] as [string, null]
               const data = await res.json()
               if (!Array.isArray(data)) return [word.id, null] as [string, null]
-              return [word.id, data] as [string, Word[]]
+              return [word.id, data] as [string, LocalWord[]]
             })
             .catch(() => [word.id, null] as [string, null])
 
@@ -235,8 +415,8 @@ export default function TaoKhoaHocPage() {
 
       const responses = await Promise.all(requests)
 
-      // Chuyển thành map { [wordId]: Word[] }
-      const resultMap: Record<string, Word[]> = {}
+      // Chuyển thành map { [wordId]: LocalWord[] }
+      const resultMap: Record<string, LocalWord[]> = {}
 
       for (const [wordId, words] of responses) {
         if (words) {
@@ -262,7 +442,9 @@ export default function TaoKhoaHocPage() {
             return {
               ...newWord,
               selected: old?.selected ?? false,
-              done: learnedWordIds.includes(newWord.id)
+              done: learnedWordIds.includes(newWord.id),
+              popularity: newWord.popularity || 0,
+              belong: ""
             }
           })
 
@@ -270,7 +452,7 @@ export default function TaoKhoaHocPage() {
         }
 
         // ✅ Cập nhật với progress và belong info từ courses
-        const updatedData: { [key: string]: Word[] } = {};
+        const updatedData: { [key: string]: LocalWord[] } = {};
   
         for (const lessonKey in merged) {
           updatedData[lessonKey] = updateWordStatus(merged[lessonKey], courses);
@@ -281,21 +463,18 @@ export default function TaoKhoaHocPage() {
     }
 
     fetchLevel2Words()
-  }, [lessons, courses, updateWordStatus])
+  }, [lessonsFiltered, courses, updateWordStatus])
 
   // Handle checkbox selection
   const handleWordSelection = (lessonId: string, wordId: string) => {
+    console.log('handleWordSelection called:', { lessonId, wordId })
+    
+    // Find the selected word to debug
+    const selectedLesson = lessonsFiltered.find(l => l.id === lessonId)
+    const selectedWord = selectedLesson?.words.find(w => w.id === wordId)
+    console.log('Selected word details:', selectedWord)
+    
     setLessonsFiltered((prevLessons) =>
-      prevLessons.map((lesson) =>
-        lesson.id === lessonId
-          ? {
-            ...lesson,
-            words: lesson.words.map((word) => (word.id === wordId ? { ...word, selected: !word.selected } : word)),
-          }
-          : lesson,
-      ),
-    )
-    setLessons((prevLessons) =>
       prevLessons.map((lesson) =>
         lesson.id === lessonId
           ? {
@@ -307,6 +486,12 @@ export default function TaoKhoaHocPage() {
     )
   }
   const handleWordSelection2 = (dataId: string, wordId: string) => {
+    console.log('handleWordSelection2 called:', { dataId, wordId })
+    
+    // Find the selected word to debug
+    const selectedWord = data[dataId]?.find(w => w.id === wordId)
+    console.log('Selected word details from data:', selectedWord)
+    
     setData((prevData) => {
       const updatedList = prevData[dataId].map((word) =>
         word.id === wordId ? { ...word, selected: !word.selected } : word
@@ -324,10 +509,29 @@ export default function TaoKhoaHocPage() {
   const transferSelectedWords = () => {
     const selectedWords: CourseWord[] = []
 
+    console.log('=== TRANSFER DEBUG START ===')
+    
+    // Debug: Check all selected words in lessonsFiltered
+    lessonsFiltered.forEach((lesson) => {
+      const selectedInLesson = lesson.words.filter(w => w.selected)
+      if (selectedInLesson.length > 0) {
+        console.log(`Lesson ${lesson.title} has ${selectedInLesson.length} selected words:`, selectedInLesson.map(w => `${w.word} (${w.id})`))
+      }
+    })
+
+    // Debug: Check all selected words in data
+    Object.keys(data).forEach((dataKey) => {
+      const selectedInData = data[dataKey].filter(w => w.selected)
+      if (selectedInData.length > 0) {
+        console.log(`Data ${dataKey} has ${selectedInData.length} selected words:`, selectedInData.map(w => `${w.word} (${w.id})`))
+      }
+    })
+
     // ✅ Lấy từ được chọn từ lessons
-    lessons.forEach((lesson) => {
+    lessonsFiltered.forEach((lesson) => {
       lesson.words.forEach((word) => {
         if (word.selected) {
+          console.log('Adding word from lesson:', word)
           selectedWords.push({
             wordId: word.id,
             pauseTime: "2",
@@ -346,6 +550,7 @@ export default function TaoKhoaHocPage() {
     Object.values(data).forEach((words) => {
       words.forEach((word) => {
         if (word.selected) {
+          console.log('Adding word from data:', word)
           selectedWords.push({
             wordId: word.id,
             pauseTime: "2",
@@ -360,10 +565,14 @@ export default function TaoKhoaHocPage() {
       })
     })
 
+    console.log('All selected words to transfer:', selectedWords)
+    console.log('=== TRANSFER DEBUG END ===')
+
     // ✅ Bỏ trùng id (nếu từ đã tồn tại trong courseWords)
     setCourseWords((prevWords) => {
       const existingIds = prevWords.map((w) => w.wordId)
       const newWords = selectedWords.filter((w) => !existingIds.includes(w.wordId))
+      console.log('New words after deduplication:', newWords)
       return [...prevWords, ...newWords]
     })
 
@@ -401,15 +610,7 @@ export default function TaoKhoaHocPage() {
     // Xóa khỏi danh sách course
     setCourseWords((prevWords) => prevWords.filter((word) => word.wordId !== wordId))
 
-    // Bỏ chọn từ trong lessons
-    setLessons((prevLessons) =>
-      prevLessons.map((lesson) => ({
-        ...lesson,
-        words: lesson.words.map((word) =>
-          word.id === wordId ? { ...word, selected: false } : word
-        ),
-      })),
-    )
+    // Bỏ chọn từ trong lessonsFiltered
     setLessonsFiltered((prevLessons) =>
       prevLessons.map((lesson) => ({
         ...lesson,
@@ -418,6 +619,7 @@ export default function TaoKhoaHocPage() {
         ),
       })),
     )
+    
     // Bỏ chọn từ trong data
     setData((prevData) => {
       const newData: typeof prevData = {}
@@ -441,55 +643,57 @@ export default function TaoKhoaHocPage() {
       return
     }
 
-    // Get lesson list ID from URL
-    const searchParams = new URLSearchParams(window.location.search);
-    const lessonListId = searchParams.get("id");
+    if (!actualLessonId) {
+      alert("Không tìm thấy ID bài học!")
+      return
+    }
 
     const payload = {
       name: courseName.trim(),
       estimatedTime: calculateEstimatedTime(),
       words: courseWords,
       done: "0",
-      lessonListId: lessonListId // Thêm ID danh sách bài học
+      lessonListId: actualLessonId // Sử dụng actualLessonId thay vì lessonId
     }
 
     try {
-      const res = await fetch("/api/courses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      })
+      if (isEditMode && editCourseData?.id) {
+        // Update existing course
+        const response = await fetch(`/api/courses/${editCourseData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
 
-      if (!res.ok) {
-        let message = "Lỗi không xác định"
-        try {
-          const errorData = await res.json()
-          message = errorData.error || message
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (err) {
-          message = "Server không trả về JSON hợp lệ."
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
-        alert(`❌ Lỗi tạo khóa học: ${message}`)
-        return
+
+        const updatedCourse = await response.json()
+        alert(`✅ Đã cập nhật bài học "${updatedCourse.name}" thành công với ${updatedCourse.words.length} từ!`)
+      } else {
+        // Create new course
+        const createdCourse = await createCourseMutation.mutateAsync(payload)
+        alert(`✅ Đã tạo khóa học "${createdCourse.name}" thành công với ${createdCourse.words.length} từ!`)
       }
-
-
-      const createdCourse = await res.json()
-
-      alert(`✅ Đã tạo khóa học "${createdCourse.name}" thành công với ${createdCourse.words.length} từ!`)
 
       // Reset state
       setCourseWords([])
       setCourseName("")
-      setLessons(lessons)
+
+      // Clear edit data
+      if (isEditMode) {
+        sessionStorage.removeItem('editCourseData')
+        sessionStorage.removeItem('editLessonData')
+      }
 
       // Navigate
       router.push("/quanlybaihoc")
     } catch (error) {
-      console.error("Lỗi khi tạo khóa học:", error)
-      alert("❌ Đã xảy ra lỗi khi gửi dữ liệu đến server.")
+      console.error("Lỗi khi tạo/cập nhật khóa học:", error)
+      alert(`❌ Lỗi ${isEditMode ? 'cập nhật' : 'tạo'} khóa học: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`)
     }
   }
 
@@ -533,10 +737,10 @@ export default function TaoKhoaHocPage() {
     }
   }
   const sensors = useSensors(useSensor(PointerSensor))
-  const [expandedWordIds, setExpandedWordIds] = useState<Record<string, boolean>>({})
+  
   // ✅ Tạo bản đồ để lấy từ gốc theo wordId
   const allWordsById = useMemo(() => {
-    const result: Record<string, Word> = {}
+    const result: Record<string, LocalWord> = {}
 
     lessons.forEach((lesson) => {
       lesson.words.forEach((word) => {
@@ -557,21 +761,21 @@ export default function TaoKhoaHocPage() {
     setExpandedWordIds(prev => ({ ...prev, [wordId]: !prev[wordId] }))
   }
   const findListWordLevel2 = (
-    data: { [key: string]: Word[] },
+    data: { [key: string]: LocalWord[] },
     wordId: string
-  ): { id: string; words: Word[] } | null => {
+  ): { id: string; words: LocalWord[] } | null => {
     const words = data[wordId];
     if (words) {
       return { id: wordId, words };
     }
     return null;
   };
-  const sortLessons = (lessons: { id: string, title: string, words: Word[] }[]) => {
+  
+  const sortLessons = (lessons: { id: string, title: string, words: LocalWord[] }[]) => {
     return [...lessons].sort((a, b) => a.title.localeCompare(b.title));
   };
 
-  const [isAllSelected, setIsAllSelected] = useState(true);
-  const [lessonsFiltered, setLessonsFiltered] = useState<Lesson[]>(lessons)
+
   const changeFilter = (lessonId: string, checked: boolean | "indeterminate") => {
     const lesson = lessons.find((l) => l.id === lessonId);
     if (!lesson) return;
@@ -620,57 +824,17 @@ export default function TaoKhoaHocPage() {
     return belongs.join(', ');
   };
 
-  useEffect(() => {
-    if (!courses || courses.length === 0) return;
-
-    console.log("✅ courses ready:", courses);
-
-    setLessonsFiltered(() => {
-      // console.log("1", lessons);
-      const updatedLessons = lessons.map((lesson) => {
-        // console.log("2")
-        const updatedWords = lesson.words.map((word) => {
-          // console.log("3")
-          const matcheds = findAllMatchedWords(word.id, courses);
-          const belong = findBelongLessons(word.id, courses);
-
-          // console.log("Word ID:", word.id, "Matched:", matcheds, "Belong:", belong);
-
-          if (matcheds.length < 1) return word;
-
-          // const current = Number(matched.progress || 0);
-          // const maxReads = Number(matched.maxReads || 0);
-          const isDone = matcheds.some(
-            (matched) => Number(matched.progress || 0) >= Number(matched.maxReads || 0)
-          );
-          return {
-            ...word,
-            done: isDone,
-            belong: belong ?? "",
-          };
-        });
-
-        return {
-          ...lesson,
-          words: updatedWords,
-        };
-      });
-
-      return updatedLessons;
-    });
-
-  }, [courses, lessons]);
-
-
   return (
-    <NoCopyWrapper>
+    // <NoCopyWrapper>
       <div className="min-h-screen bg-gray-100">
         {/* Fixed Top Navbar */}
         <nav className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-xl font-bold text-gray-900">Tạo bài học</h1>
-              <Button onClick={() => router.push("/quanlybaihoc")} variant="outline">
+              <h1 className="text-xl font-bold text-gray-900">
+                {isEditMode ? "Chỉnh sửa bài học" : "Tạo bài học"}
+              </h1>
+              <Button className="bg-blue-600 text-white" onClick={() => router.push("/quanlybaihoc")} variant="outline">
                 Quản lý bài học
               </Button>
             </div>
@@ -689,15 +853,17 @@ export default function TaoKhoaHocPage() {
         {error && !loading && (
           <ErrorHandler
             type={error === "NO_LESSON_SELECTED" ? "NO_LESSON_SELECTED" : "GENERAL_ERROR"}
-            title={error === "NO_LESSON_SELECTED" ? "Chưa chọn danh sách bài học" : "Không thể tải dữ liệu bài học"}
+            title={error === "NO_LESSON_SELECTED" ? "Chưa chọn  giáo trình tùy chỉnh" : "Không thể tải dữ liệu bài học"}
             message={error === "NO_LESSON_SELECTED" 
-              ? "Bạn cần chọn một danh sách bài học trước khi tạo bài học mới"
+              ? "Bạn cần chọn một giáo trình tùy chỉnh trước khi tạo bài học mới"
               : "Đã xảy ra lỗi khi tải danh sách từ vựng và khóa học. Vui lòng thử lại."
             }
-            errorDetails={error !== "NO_LESSON_SELECTED" ? error : undefined}
+            errorDetails={error !== "NO_LESSON_SELECTED" ? (error instanceof Error ? error.message : String(error)) : undefined}
             onRetry={error !== "NO_LESSON_SELECTED" ? () => window.location.reload() : undefined}
             onGoBack={() => router.push("/quanlygiaotrinh")}
             onGoHome={() => router.push("/")}
+            onActionButton={() => window.location.href = '/quanlygiaotrinh'}
+            labelActionButton="Đi đến Quản lý giáo trình"
           />
         )}
 
@@ -958,7 +1124,9 @@ export default function TaoKhoaHocPage() {
                       className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm"
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      <span className="font-medium">tạo bài học</span>
+                      <span className="font-medium">
+                        {isEditMode ? "Cập nhật bài học" : "Tạo bài học"}
+                      </span>
                     </Button>
                   </div>
                 </div>
@@ -1040,13 +1208,13 @@ export default function TaoKhoaHocPage() {
           </div>
         )}
       </div>
-    </NoCopyWrapper>
+    // </NoCopyWrapper>
   )
 }
 
 const SortableRow = ({ word,
   courseWord, updateCourseWord, removeCourseWord, updateMaxReadsCourseWord }: {
-    word: Word
+    word: LocalWord
     courseWord: CourseWord
     updateMaxReadsCourseWord: (id: string, value: string) => void
     updateCourseWord: (id: string, field: keyof CourseWord, value: string) => void
