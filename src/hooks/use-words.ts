@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Word } from '@/types'
+import { Word } from '@/lib/types'
 
 // API functions
 const fetchWords = async (): Promise<Word[]> => {
@@ -137,11 +137,6 @@ export const useUpdateWord = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: wordKeys.lists() })
       queryClient.setQueryData(wordKeys.detail(data.id), data)
-      // Invalidate level-specific queries if word has level
-      if (data.level) {
-        queryClient.invalidateQueries({ queryKey: wordKeys.byLevel(data.level) })
-        queryClient.invalidateQueries({ queryKey: wordKeys.byLevelList(data.level) })
-      }
     },
   })
 }

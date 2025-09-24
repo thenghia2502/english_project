@@ -4,7 +4,8 @@ import { Curriculum, Level, Unit } from '@/types'
 
 interface CurriculumState {
   // Data
-  curriculums: Curriculum[]
+  originalCurriculums: Curriculum[]
+  customCurriculums: Curriculum[]
   selectedCurriculum: Curriculum | null
   selectedLevel: Level | null
   selectedUnits: Unit[]
@@ -13,18 +14,21 @@ interface CurriculumState {
   curriculumCache: Record<string, Curriculum>
   
   // Actions
-  setCurriculums: (curriculums: Curriculum[]) => void
+  setOriginalCurriculums: (curriculums: Curriculum[]) => void
+  setCustomCurriculums: (curriculums: Curriculum[]) => void
   setSelectedCurriculum: (curriculum: Curriculum | null) => void
   setSelectedLevel: (level: Level | null) => void
   setSelectedUnits: (units: Unit[]) => void
   addCurriculumToCache: (curriculum: Curriculum) => void
   getCurriculumFromCache: (id: string) => Curriculum | null
-  updateCurriculum: (id: string, updates: Partial<Curriculum>) => void
+  updateOriginalCurriculum: (id: string, updates: Partial<Curriculum>) => void
+  updateCustomCurriculum: (id: string, updates: Partial<Curriculum>) => void
   reset: () => void
 }
 
 const initialState = {
-  curriculums: [],
+  originalCurriculums: [],
+  customCurriculums: [],
   selectedCurriculum: null,
   selectedLevel: null,
   selectedUnits: [],
@@ -37,8 +41,11 @@ export const useCurriculumStore = create<CurriculumState>()(
       (set, get) => ({
         ...initialState,
         
-        setCurriculums: (curriculums: Curriculum[]) => 
-          set({ curriculums }, false, 'setCurriculums'),
+        setOriginalCurriculums: (curriculums: Curriculum[]) => 
+          set({ originalCurriculums: curriculums }, false, 'setOriginalCurriculums'),
+
+        setCustomCurriculums: (curriculums: Curriculum[]) =>
+          set({ customCurriculums: curriculums }, false, 'setCustomCurriculums'),
         
         setSelectedCurriculum: (curriculum: Curriculum | null) => 
           set({ 
@@ -70,30 +77,48 @@ export const useCurriculumStore = create<CurriculumState>()(
           const { curriculumCache } = get()
           return curriculumCache[id] || null
         },
-        
-        updateCurriculum: (id: string, updates: Partial<Curriculum>) => {
-          const { curriculums, curriculumCache, selectedCurriculum } = get()
+        updateOriginalCurriculum: (id: string, updates: Partial<Curriculum>) => {
+          const { originalCurriculums, curriculumCache, selectedCurriculum } = get()
           
-          // Update in main list
-          const updatedCurriculums = curriculums.map(curr => 
+          const updatedOriginal = originalCurriculums.map(curr => 
             curr.id === id ? { ...curr, ...updates } : curr
           )
-          
-          // Update in cache
+
           const updatedCache = curriculumCache[id] 
             ? { ...curriculumCache, [id]: { ...curriculumCache[id], ...updates } }
             : curriculumCache
-          
-          // Update selected if it's the same one
+
           const updatedSelected = selectedCurriculum?.id === id 
             ? { ...selectedCurriculum, ...updates }
             : selectedCurriculum
-          
+
           set({ 
-            curriculums: updatedCurriculums,
+            originalCurriculums: updatedOriginal,
             curriculumCache: updatedCache,
             selectedCurriculum: updatedSelected
-          }, false, 'updateCurriculum')
+          }, false, 'updateOriginalCurriculum')
+        },
+
+        updateCustomCurriculum: (id: string, updates: Partial<Curriculum>) => {
+          const { customCurriculums, curriculumCache, selectedCurriculum } = get()
+
+          const updatedCustom = customCurriculums.map(curr => 
+            curr.id === id ? { ...curr, ...updates } : curr
+          )
+
+          const updatedCache = curriculumCache[id] 
+            ? { ...curriculumCache, [id]: { ...curriculumCache[id], ...updates } }
+            : curriculumCache
+
+          const updatedSelected = selectedCurriculum?.id === id 
+            ? { ...selectedCurriculum, ...updates }
+            : selectedCurriculum
+
+          set({ 
+            customCurriculums: updatedCustom,
+            curriculumCache: updatedCache,
+            selectedCurriculum: updatedSelected
+          }, false, 'updateCustomCurriculum')
         },
         
         reset: () => 

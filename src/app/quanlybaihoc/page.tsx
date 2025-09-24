@@ -10,27 +10,27 @@ import clsx from "clsx"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
-import { Course } from "@/lib/types"
+import { Lesson } from "@/lib/types"
 import Loading from "@/components/ui/loading"
 import ErrorHandler from "@/components/ui/error-handler"
-import { useCourses, useDeleteCourse } from "@/hooks"
-import { useWords } from "@/hooks/use-words"
+import { useDeleteLesson, useLessons } from "@/hooks/use-lessons"
+// Ensure all other imports and usages of Lesson come from "@/lib/types" only
 
 // Helper functions for sorting and searching
-function sortCoursesByCreatedAt(courses: Course[]): Course[] {
-  return [...courses].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+function sortLessonsByCreatedAt(lessons: Lesson[]): Lesson[] {
+  return [...lessons].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
 }
 
-function searchCoursesByName(courses: Course[], query: string): Course[] {
-  return courses.filter(course =>
-    course.name.toLowerCase().includes(query.toLowerCase())
+function searchLessonsByName(lessons: Lesson[], query: string): Lesson[] {
+  return lessons.filter(lesson =>
+    lesson.name.toLowerCase().includes(query.toLowerCase())
   )
 }
 
-function sortCoursesByDone(courses: Course[]): Course[] {
-  return [...courses].sort(
+function sortLessonsByDone(lessons: Lesson[]): Lesson[] {
+  return [...lessons].sort(
     (a, b) => Number(b.done) - Number(a.done)
   )
 }
@@ -39,35 +39,16 @@ export default function QuanLyKhoaHocPage() {
   const router = useRouter()
 
   // React Query hooks
-  const { data: courses = [], isLoading: coursesLoading, error: coursesError } = useCourses()
-  const { data: words = [], isLoading: wordsLoading, error: wordsError } = useWords()
-  const deleteCourseMutation = useDeleteCourse()
-
+  const deleteLessonMutation = useDeleteLesson()
+  const { data: lessons = [], isLoading: lessonsLoading, error: lessonsError } = useLessons()
   // Local state for UI
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "progress-desc" | "progress-asc">('date-desc')
   const [searchText, setSearchText] = useState('')
 
-  // Computed values
-  const isLoading = coursesLoading || wordsLoading
-  const error = coursesError?.message || wordsError?.message
-  const hasNoCourses = !isLoading && !error && courses.length === 0
-
-  // Create words lookup map
-  const allWordsById = useMemo(() => {
-    const result: Record<string, { word: string; meaning?: string; pronunciation?: string }> = {}
-
-    words.forEach((word) => {
-      result[word.id] = {
-        word: word.word,
-        meaning: word.meaning,
-        pronunciation: word.pronunciation
-      }
-    })
-
-    console.log('AllWordsById created:', Object.keys(result).length, 'words')
-
-    return result
-  }, [words])
+  // Computed value
+  const isLoading = lessonsLoading 
+  const error = lessonsError?.message
+  const hasNoLessons = !isLoading && !error && lessons.length === 0
 
   const handleSortChange = (value: string) => {
     if (value === "date-desc" || value === "date-asc" || value === "progress-desc" || value === "progress-asc") {
@@ -75,64 +56,57 @@ export default function QuanLyKhoaHocPage() {
     }
   }
 
-  // Tính toán courses đã được lọc và sắp xếp
+  // // Tính toán courses đã được lọc và sắp xếp
   const filteredAndSortedCourses = useMemo(() => {
     // Lọc theo text search trước
     const filtered = searchText
-      ? searchCoursesByName(courses, searchText)
-      : courses
+      ? searchLessonsByName(lessons, searchText)
+      : lessons
 
     // Sau đó sắp xếp
     if (sortBy === 'date-desc') {
-      return sortCoursesByCreatedAt(filtered) // Mới đến cũ
+      return sortLessonsByCreatedAt(filtered) // Mới đến cũ
     } else if (sortBy === 'date-asc') {
-      return [...filtered].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Cũ đến mới
+      return [...filtered].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Cũ đến mới
     } else if (sortBy === 'progress-desc') {
-      return sortCoursesByDone(filtered) // Giảm dần (100% -> 0%)
+      return sortLessonsByDone(filtered) // Giảm dần (100% -> 0%)
     } else { // progress-asc
       return [...filtered].sort((a, b) => Number(a.done) - Number(b.done)) // Tăng dần (0% -> 100%)
     }
-  }, [courses, sortBy, searchText])
+  }, [lessons, sortBy, searchText])
 
   const handleFindCourses = useCallback((text: string) => {
     setSearchText(text)
   }, [])
 
   // Delete a course using React Query mutation
-  const deleteCourse = async (courseId: string) => {
+  const deleteLesson = async (lessonId: string) => {
     try {
-      await deleteCourseMutation.mutateAsync(courseId)
-      // React Query sẽ tự động invalidate và refetch courses
+      await deleteLessonMutation.mutateAsync(lessonId)
+      // React Query sẽ tự động invalidate và refetch lessons
     } catch (error) {
-      console.error("Error deleting course:", error)
+      console.error("Error deleting lesson:", error)
       // TODO: Show error toast/notification
     }
   }
 
-  // Start learning a course
-  const startLearning = (course: Course) => {
-    router.push(`/?courseId=${course.id}`)
+  // Start learning a lesson
+  const startLearning = (lesson: Lesson) => {
+    router.push(`/hoctu?lessonId=${lesson.id}`)
   }
-  
-  // Edit lesson - lưu course data vào sessionStorage
-  const editLesson = async (course: Course) => {
-    try {
 
-      // Chuẩn bị data cho edit mode với đầy đủ thông tin
-      const editData = course
-      
-      // Lưu vào sessionStorage
-      sessionStorage.setItem('editLessonData', JSON.stringify(editData))
-      
+  // Edit lesson - lưu lesson data vào sessionStorage
+  const editLesson = async (lesson: Lesson) => {
+    try {
       // Chuyển hướng đến trang edit với mode=edit
-      router.push(`/taobaihoc?mode=edit`)
+      router.push(`/taobaihoc?mode=edit&lid=${lesson.id}&id=${lesson.curriculum_custom_id}`)
       
     } catch (error) {
       console.error('Error fetching lesson data for edit:', error)
     }
   }
 
-  // Format date
+  // // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString("vi-VN", {
@@ -151,8 +125,8 @@ export default function QuanLyKhoaHocPage() {
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">Quản lý bài học</h1>
-            <Button onClick={() => router.push("/taobaihoc")} className="bg-blue-600 hover:bg-blue-700 text-white">
-              Tạo bài học mới
+            <Button onClick={() => router.push("/quanlygiaotrinh")} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Quản lý Giáo trình
             </Button>
           </div>
         </div>
@@ -181,7 +155,7 @@ export default function QuanLyKhoaHocPage() {
       )}
 
       {/* ✅ No Data State */}
-      {hasNoCourses && (
+      {hasNoLessons && (
         <ErrorHandler
           type="NO_DATA_FOUND"
           pageType="quan-ly-bai-hoc"
@@ -195,12 +169,12 @@ export default function QuanLyKhoaHocPage() {
       )}
 
       {/* ✅ Main Content - only show when not loading, no error and has courses */}
-      {!isLoading && !error && !hasNoCourses && (
+      {true && true && true && (
         <div className="pt-[4.5rem] min-h-screen">
           <div className="mx-auto px-4 py-8 sm:px-6 lg:px-8">
             <>
               <div className="mb-5 space-y-2">
-                <div className="flex items-center m-2">
+                <div className="flex items-center m-2 text-gray-900">
                   <Label className="w-[100px] text-lg">Tìm kiếm: </Label>
                   <Input
                     type="text"
@@ -214,7 +188,7 @@ export default function QuanLyKhoaHocPage() {
                     {/* Container Ngày tạo */}
                     <div className="flex flex-col space-y-3">
                       <h4 className="text-sm font-semibold text-gray-700">Ngày tạo</h4>
-                      <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-col space-y-2">
+                      <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-col space-y-2 text-gray-900">
                         <label className="flex items-center space-x-2 cursor-pointer">
                           <RadioGroupItem value="date-desc" id="date-desc" />
                           <span className="text-sm">
@@ -233,7 +207,7 @@ export default function QuanLyKhoaHocPage() {
                     {/* Container Tiến độ */}
                     <div className="flex flex-col space-y-3">
                       <h4 className="text-sm font-semibold text-gray-700">Tiến độ</h4>
-                      <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-col space-y-2">
+                      <RadioGroup value={sortBy} onValueChange={handleSortChange} className="flex flex-col space-y-2 text-gray-900">
                         <label className="flex items-center space-x-2 cursor-pointer">
                           <RadioGroupItem value="progress-desc" id="progress-desc" />
                           <span className="text-sm">
@@ -250,7 +224,7 @@ export default function QuanLyKhoaHocPage() {
                     </div>
                   </div>
 
-                  <div className="absolute top-0 left-0 flex pr-2 pb-1 bg-[#f3f4f6]">
+                  <div className="absolute top-0 left-0 flex pr-2 pb-1 bg-[#f3f4f6] text-gray-900">
                     <Funnel className="bg-[#f3f4f6] w-4 h-4" />
                     <span className="text-sm bg-[#f3f4f6]">
                       Sắp xếp
@@ -264,25 +238,25 @@ export default function QuanLyKhoaHocPage() {
                     Không có khóa học nào được tìm thấy với chuỗi tìm kiếm &quot;{searchText}&quot;
                   </div>
                 )}
-                {filteredAndSortedCourses.map((course) => (
+                {filteredAndSortedCourses.map((lesson) => (
                   <Card
-                    key={course.id}
+                    key={lesson.id}
                     className={clsx(
                       "bg-white shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer",
                       {
-                        "bg-gradient-to-b from-blue-100 to-white": course.done === "100"
+                        "bg-gradient-to-b from-blue-100 to-white": lesson.done === "100"
                       }
                     )}
                   >
                     <CardHeader className="pb-4">
                       <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{course.name}</CardTitle>
+                        <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">{lesson.name}</CardTitle>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
-                            deleteCourse(course.id)
+                            deleteLesson(lesson.id)
                           }}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
                         >
@@ -296,11 +270,11 @@ export default function QuanLyKhoaHocPage() {
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
-                            <span>{course.words.length} từ</span>
+                            <span>{lesson.words?.length} từ</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            <span>{course.estimatedTime}</span>
+                            <span>{lesson.estimatedTime}</span>
                           </div>
                         </div>
 
@@ -308,7 +282,7 @@ export default function QuanLyKhoaHocPage() {
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Tạo lúc:</span>
-                            <span className="text-gray-500">{formatDate(course.createdAt)}</span>
+                            <span className="text-gray-500">{formatDate(lesson.created_at)}</span>
                           </div>
                         </div>
 
@@ -317,26 +291,30 @@ export default function QuanLyKhoaHocPage() {
                           <div className="space-y-2 min-w-[240px]">
                             <p className="text-sm font-medium text-gray-700">Từ vựng mẫu:</p>
                             <div className="flex flex-wrap gap-1">
-                              {course.words.slice(0, 2).map((cw) => {
-                                const word = allWordsById[cw.wordId] // ← Lấy Word từ wordId
-                                console.log(`Looking for wordId: ${cw.wordId}, found:`, word)
-                                return (<Badge key={cw.wordId} variant="outline" className="text-xs">
-                                  {word?.word || `No word found for ${cw.wordId}`}
-                                </Badge>)
-                              })}
-                              {course.words.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{course.words.length - 2} từ khác
-                                </Badge>
-                              )}
+                              {(() => {
+                                const words = lesson.words ?? []
+                                return words.slice(0, 2).map((cw) => (
+                                  <Badge key={cw.id} variant="outline" className="text-xs text-gray-900">
+                                    {cw.word}
+                                  </Badge>
+                                ))
+                              })()}
+                              {(() => {
+                                const words = lesson.words ?? []
+                                return words.length > 2 ? (
+                                  <Badge variant="outline" className="text-xs text-gray-900">
+                                    +{words.length - 2} từ khác
+                                  </Badge>
+                                ) : null
+                              })()}
                             </div>
                           </div>
                           <div className="flex-1 flex justify-center">
                             <div
-                              className={`h-[50px] w-[50px] rounded-full flex items-center justify-center text-white ${course.done === '100' ? 'bg-green-600' : 'bg-yellow-500'
+                              className={`h-[50px] w-[50px] rounded-full flex items-center justify-center text-white ${lesson.done === '100' ? 'bg-green-600' : 'bg-yellow-500'
                                 }`}
                             >
-                              {course.done === '100' ? <Check /> : `${course.done}%`}
+                              {lesson.done === '100' ? <Check /> : `${lesson.done}%`}
                             </div>
                           </div>
                         </div>
@@ -344,14 +322,14 @@ export default function QuanLyKhoaHocPage() {
                         {/* Action Button */}
                         <div className="flex items-center justify-around">
                           <Button
-                            onClick={() => startLearning(course)}
+                            onClick={() => startLearning(lesson)}
                             className="bg-green-600 hover:bg-green-700 text-white mt-4"
                           >
                             <Play className="w-4 h-4 mr-2" />
                             Bắt đầu học
                           </Button>
                           <Button className="bg-green-600 hover:bg-green-700 text-white mt-4"
-                            onClick={() => editLesson(course)}
+                            onClick={() => editLesson(lesson)}
                           >
                             <Pen className="w-4 h-4 mr-2" />
                             Chỉnh sửa bài học

@@ -1,0 +1,235 @@
+[
+  {
+    "id": "cc1",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum A",
+    "description": "",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-19T08:45:33.531Z"
+  },
+  {
+    "id": "cc2",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum B",
+    "description": "Curriculum for Class B",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc3",
+    "curriculum_original_id": "c1",
+    "name": "Custom Curriculum C",
+    "description": "Curriculum for Class C",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc4",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum D",
+    "description": "Curriculum for Class D",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc5",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum E",
+    "description": "Curriculum for Class E",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc6",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum F",
+    "description": "Curriculum for Class F",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc7",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum G",
+    "description": "Curriculum for Class G",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc8",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum H",
+    "description": "Curriculum for Class H",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc9",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum I",
+    "description": "Curriculum for Class I",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc10",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum J",
+    "description": "Curriculum for Class J",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc11",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum K",
+    "description": "Curriculum for Class K",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc12",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum L",
+    "description": "Curriculum for Class L",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc13",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum M",
+    "description": "Curriculum for Class M",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc14",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum N",
+    "description": "Curriculum for Class N",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc15",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum O",
+    "description": "Curriculum for Class O",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc16",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum P",
+    "description": "Curriculum for Class P",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc17",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum Q",
+    "description": "Curriculum for Class Q",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc18",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum R",
+    "description": "Curriculum for Class R",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc19",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum S",
+    "description": "Curriculum for Class S",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc20",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "Custom Curriculum T",
+    "description": "Curriculum for Class T",
+    "created_at": "2025-09-16T10:20:00Z",
+    "updated_at": "2025-09-16T10:20:00Z"
+  },
+  {
+    "id": "cc891210",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "test_create_cc_2",
+    "description": "",
+    "created_at": "2025-09-19T08:52:32.689Z",
+    "updated_at": "2025-09-19T08:52:32.689Z"
+  },
+  {
+    "id": "cc994358",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "bài 1",
+    "description": "",
+    "created_at": "2025-09-19T08:53:55.173Z",
+    "updated_at": "2025-09-19T08:53:55.173Z"
+  },
+  {
+    "id": "cc245484",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "test_create_cc_2",
+    "description": "",
+    "created_at": "2025-09-19T08:54:11.087Z",
+    "updated_at": "2025-09-19T08:54:11.087Z"
+  },
+  {
+    "id": "cc407648",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "bai 2",
+    "description": "",
+    "created_at": "2025-09-19T08:55:25.252Z",
+    "updated_at": "2025-09-19T08:55:25.252Z"
+  },
+  {
+    "id": "cc276366",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "test_create_cc_3",
+    "description": "",
+    "created_at": "2025-09-19T08:57:04.366Z",
+    "updated_at": "2025-09-19T10:05:53.167Z"
+  },
+  {
+    "id": "cc940543",
+    "curriculum_original_id": "c2",
+    "level_id": "l3",
+    "name": "testaddccA2",
+    "description": "",
+    "created_at": "2025-09-23T08:22:48.095Z",
+    "updated_at": "2025-09-23T08:22:48.095Z"
+  }
+]

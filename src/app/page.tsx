@@ -1,9 +1,10 @@
-import VocabTrainer from "./vocab-trainerV4";
+import QuanLyBaiHoc from "@/app/quanlybaihoc/page";
 
 export default function Home() {
   return (
-    <div>      
-      <VocabTrainer/>
+    <div>
+      <QuanLyBaiHoc />
     </div>
   );
 }
+

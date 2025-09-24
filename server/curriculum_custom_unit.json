@@ -1,0 +1,52 @@
+[
+  {
+    "id": "ccu1",
+    "curriculum_custom_id": "cc1",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu2",
+    "curriculum_custom_id": "cc1",
+    "unit_id": "u2"
+  },
+  {
+    "id": "ccu3",
+    "curriculum_custom_id": "cc2",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu4",
+    "curriculum_custom_id": "cc2",
+    "unit_id": "u2"
+  },
+  {
+    "id": "ccu352861",
+    "curriculum_custom_id": "cc891210",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu861561",
+    "curriculum_custom_id": "cc994358",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu423609",
+    "curriculum_custom_id": "cc245484",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu249513",
+    "curriculum_custom_id": "cc407648",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu677194",
+    "curriculum_custom_id": "cc276366",
+    "unit_id": "u1"
+  },
+  {
+    "id": "ccu518733",
+    "curriculum_custom_id": "cc940543",
+    "unit_id": "u4"
+  }
+]

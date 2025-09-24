@@ -1,0 +1,20 @@
+[
+  {
+    "id": "ls1758527503112",
+    "curriculum_custom_id": "cc1",
+    "name": "test11",
+    "order": 6,
+    "done": 0,
+    "created_at": "2025-09-22T07:51:43.811Z",
+    "updated_at": "2025-09-22T07:51:43.811Z"
+  },
+  {
+    "id": "ls1758696870111",
+    "curriculum_custom_id": "cc1",
+    "name": "testtest",
+    "order": 2,
+    "done": "0",
+    "created_at": "2025-09-24T06:54:31.362Z",
+    "updated_at": "2025-09-24T08:02:07.326Z"
+  }
+]
