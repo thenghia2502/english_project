@@ -102,7 +102,7 @@ export default function CurriculumCustomList({ curriculumCustom, searchQuery = '
                     </div>
                     <div className='flex space-x-6'>
                       <Button className='bg-green-600 hover:bg-green-700 text-white flex-1' variant="ghost" size="sm" onClick={() => routerPush(`/taobaihoc?id=${curriculum.id}`)}>Tạo bài học</Button>
-                      <Button className='bg-green-600 hover:bg-green-700 text-white flex-1' variant="ghost" size="sm" onClick={() => routerPush(`/taodanhsachbaihoc?mode=edit&curriculum_custom=${curriculum.id}`)}>Sửa bài học</Button>
+                      <Button className='bg-green-600 hover:bg-green-700 text-white flex-1' variant="ghost" size="sm" onClick={() => routerPush(`/giaotrinh/update/${curriculum.id}`)}>Sửa bài học</Button>
                     </div>
                   </CardContent>
                 </Card>

@@ -177,7 +177,10 @@ export const useCurriculumCustomById = (id: string) => {
     queryKey: [...curriculumKeys.details(), 'custom', id],
     queryFn: () => fetchCurriculumCustomById(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Always refetch to ensure fresh data for edit mode
+    gcTime: 0, // Don't cache data
+    refetchOnMount: true, // Force refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window gets focus
   })
 }
 

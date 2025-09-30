@@ -56,7 +56,8 @@ export const useLessons = () => {
   return useQuery({
     queryKey: lessonKeys.lists(),
     queryFn: fetchLessonList,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Luôn refetch để đảm bảo dữ liệu mới nhất
+    gcTime: 0, // Không cache data
   })
 }
 
@@ -65,7 +66,8 @@ export const useLesson = (id: string) => {
     queryKey: lessonKeys.detail(id),
     queryFn: () => fetchLessonById(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Luôn refetch để đảm bảo dữ liệu mới nhất
+    gcTime: 0, // Không cache data
   })
 }
 
@@ -73,7 +75,24 @@ export const useCreateLesson = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createLesson,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: lessonKeys.lists() }),
+    onSuccess: async () => {
+      // Clear all lesson caches completely
+      queryClient.removeQueries({ queryKey: lessonKeys.all })
+      // Clear curriculum custom caches (for edit mode)
+      queryClient.removeQueries({ queryKey: ['curriculums'] })
+      // Force invalidate and refetch all lesson queries
+      await queryClient.invalidateQueries({ 
+        queryKey: lessonKeys.all,
+        refetchType: 'all' 
+      })
+      // Force invalidate curriculum custom queries
+      await queryClient.invalidateQueries({ 
+        queryKey: ['curriculums'],
+        refetchType: 'all' 
+      })
+      // Manually refetch the lessons list
+      await queryClient.refetchQueries({ queryKey: lessonKeys.lists() })
+    },
   })
 }
 
@@ -82,8 +101,10 @@ export const useUpdateLesson = () => {
   return useMutation({
     mutationFn: updateLesson,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: lessonKeys.lists() })
+      // Chỉ cập nhật cache local, không refetch
       queryClient.setQueryData(lessonKeys.detail(data.id), data)
+      // Invalidate lists để cập nhật progress/done status
+      queryClient.invalidateQueries({ queryKey: lessonKeys.lists() })
     },
   })
 }
@@ -92,9 +113,23 @@ export const useDeleteLesson = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: deleteLesson,
-    onSuccess: (_, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: lessonKeys.lists() })
-      queryClient.removeQueries({ queryKey: lessonKeys.detail(deletedId) })
+    onSuccess: async () => {
+      // Clear all lesson caches completely
+      queryClient.removeQueries({ queryKey: lessonKeys.all })
+      // Clear curriculum custom caches (for edit mode)
+      queryClient.removeQueries({ queryKey: ['curriculums'] })
+      // Force invalidate and refetch all lesson queries
+      await queryClient.invalidateQueries({ 
+        queryKey: lessonKeys.all,
+        refetchType: 'all' 
+      })
+      // Force invalidate curriculum custom queries
+      await queryClient.invalidateQueries({ 
+        queryKey: ['curriculums'],
+        refetchType: 'all' 
+      })
+      // Manually refetch the lessons list
+      await queryClient.refetchQueries({ queryKey: lessonKeys.lists() })
     },
   })
 }
@@ -109,6 +144,9 @@ export const useLessonById = (id?: string | null) => {
     queryFn: () => (id ? fetchLessonById(id) : Promise.resolve(undefined as unknown as Lesson)),
     // only run the fetch when we have a valid id
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Luôn refetch để đảm bảo dữ liệu mới nhất
+    gcTime: 0, // Không cache data
+    refetchOnMount: true, // Force refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window gets focus
   })
 }

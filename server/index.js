@@ -583,8 +583,8 @@ app.put('/api/lesson/update', async (req, res) => {
         const newWords = Array.isArray(payload.words) ? payload.words : null
         if (newWords !== null) {
             lessonWorks = lessonWorks.filter(lw => lw.lesson_id !== payload.id)
-            const lwid = `lw${Math.floor(Math.random() * 1000000)}`
             newWords.forEach(word => {
+                const lwid = `lw${Math.floor(Math.random() * 1000000)}`
                 lessonWorks.push(
                     {
                         id: lwid,

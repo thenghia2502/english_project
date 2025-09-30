@@ -1,5 +1,4 @@
-import VocabTrainer from "../vocab-trainerV4";
-
+import { VocabTrainer } from "@/components/vocab-trainer/index"
 export default function HocTu() {
   return (
     <div>

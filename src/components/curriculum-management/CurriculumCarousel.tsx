@@ -41,13 +41,13 @@ export default function CurriculumCarousel({ searchQuery, getFilteredCurriculums
                 <div key={pageIndex} className="w-full flex-shrink-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filtered.slice(pageIndex * 3, (pageIndex + 1) * 3).map((curriculum) => (
                     <Card key={curriculum.id} className="bg-white shadow-sm border border-gray-200 hover:shadow-md hover:bg-blue-50 transition-all cursor-pointer">
-                      <CardHeader className="pb-4">
+                      <CardHeader className="pb-4 relative">
                         <div className="flex items-start justify-between">
                           <CardTitle className="h-[3rem] text-lg font-semibold line-clamp-2 text-black">{curriculum.name}</CardTitle>
-                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteCurriculum(curriculum.id) }} className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2">
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteCurriculum(curriculum.id) }} className="absolute right-0 top-0 bg-red-600 text-white p-2">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </CardHeader>
                       <CardContent className="pt-0">
                         <div className="space-y-4">
@@ -77,7 +77,8 @@ export default function CurriculumCarousel({ searchQuery, getFilteredCurriculums
                             <span className="text-gray-500">{formatDate(curriculum.created_at || new Date().toISOString())}</span>
                           </div>
                           <div className="flex items-center gap-2 pt-2">
-                            <Button onClick={() => routerPush(`/taodanhsachbaihoc?mode=create&curriculum=${curriculum.id}`)} className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="sm">
+                            {/* <Button onClick={() => routerPush(`/taodanhsachbaihoc?mode=create&curriculum=${curriculum.id}`)} className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="sm"> */}
+                            <Button onClick={() => routerPush(`/giaotrinh/create/${curriculum.id}`)} className="w-full bg-blue-600 hover:bg-blue-700 text-white" size="sm">
                               <BookOpen className="w-4 h-4 mr-2" />Tạo giáo trình tùy chỉnh
                             </Button>
                           </div>

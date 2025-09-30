@@ -1,10 +1,9 @@
-import QuanLyBaiHoc from "@/app/quanlybaihoc/page";
+import { LessonManagementPage } from "@/components/lesson-management";
+
 
 export default function Home() {
   return (
-    <div>
-      <QuanLyBaiHoc />
-    </div>
+    <LessonManagementPage />
   );
 }
 

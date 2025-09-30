@@ -8,6 +8,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         return new Response(JSON.stringify(data), { status: 200 });
     } catch (error) {
         console.error("Error in lesson proxy endpoint:", error);
+        return new Response("Error fetching lesson data", { status: 500 });
     }
-    return new Response("Hello, this is the lesson proxy endpoint!");
 }

@@ -1,0 +1,99 @@
+"use client"
+
+import { Card, CardContent } from "@/components/ui/card"
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { LessonWord } from "@/lib/types"
+import SortableRow from "./SortableRow"
+
+interface LocalWord {
+    id: string
+    word: string
+    ipa: string
+}
+
+interface LessonWordsTableProps {
+    lessonWords: LessonWord[]
+    setLessonWords: React.Dispatch<React.SetStateAction<LessonWord[]>>
+    updateLessonWord: (id: string, field: keyof LessonWord, value: string) => void
+    updateMaxReadsLessonWord: (id: string, value: string) => void
+    removeLessonWord: (id: string) => void
+}
+
+export default function LessonWordsTable({
+    lessonWords,
+    setLessonWords,
+    updateLessonWord,
+    updateMaxReadsLessonWord,
+    removeLessonWord
+}: LessonWordsTableProps) {
+    const sensors = useSensors(useSensor(PointerSensor))
+
+    return (
+        <Card className="bg-white shadow-sm border border-gray-200">
+            <CardContent className="p-0">
+                <DndContext
+                    collisionDetection={closestCenter}
+                    onDragEnd={({ active, over }) => {
+                        if (active.id !== over?.id) {
+                            const oldIndex = lessonWords.findIndex((w) => w.id === active.id)
+                            const newIndex = lessonWords.findIndex((w) => w.id === over?.id)
+                            setLessonWords((words) => arrayMove(words, oldIndex, newIndex))
+                        }
+                    }}
+                    sensors={sensors}
+                >
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-gray-50 border-b border-gray-200">
+                                <TableHead className="font-semibold text-gray-700 py-4 px-6">Từ vựng</TableHead>
+                                <TableHead className="font-semibold text-gray-700 py-4 px-2 w-24 text-center">
+                                    Số lần đọc tối đa
+                                </TableHead>
+                                <TableHead className="font-semibold text-gray-700 py-4 px-2 w-24 text-center">
+                                    Số lần hiện IPA
+                                </TableHead>
+                                <TableHead className="font-semibold text-gray-700 py-4 px-2 w-24 text-center">
+                                    Số lần hiện từ
+                                </TableHead>
+                                <TableHead className="font-semibold text-gray-700 py-4 px-2 w-24 text-center">
+                                    Số lần hiện IPA và từ
+                                </TableHead>
+                                <TableHead className="font-semibold text-gray-700 py-4 px-2 w-24 text-center">
+                                    Số lần đọc trong 1 lần
+                                </TableHead>
+                                <TableHead className="font-semibold text-gray-700 py-4 px-2 w-30 text-center">
+                                    Khoảng dừng
+                                </TableHead>
+                                <TableHead className="w-16 py-4 px-4"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <SortableContext items={lessonWords.map((w) => w.id)} strategy={verticalListSortingStrategy}>
+                            <TableBody>
+                                {lessonWords.map((cw) => {
+                                    const word: LocalWord = {
+                                        id: cw.id,
+                                        word: cw.word,
+                                        ipa: cw.ipa || ''
+                                    }
+
+                                    return (
+                                        <SortableRow
+                                            key={word.id}
+                                            word={word}
+                                            lessonWord={cw}
+                                            updateLessonWord={updateLessonWord}
+                                            removeLessonWord={removeLessonWord}
+                                            updateMaxReadsLessonWord={updateMaxReadsLessonWord}
+                                        />
+                                    )
+                                })}
+                            </TableBody>
+                        </SortableContext>
+                    </Table>
+                </DndContext>
+            </CardContent>
+        </Card>
+    )
+}
