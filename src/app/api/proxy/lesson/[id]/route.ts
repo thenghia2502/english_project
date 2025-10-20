@@ -6,8 +6,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const response = await fetch(`http://localhost:4000/api/lesson/${id}`);
         const data = await response.json();
         return new Response(JSON.stringify(data), { status: 200 });
-    } catch (error) {
-        console.error("Error in lesson proxy endpoint:", error);
+    } catch {
         return new Response("Error fetching lesson data", { status: 500 });
     }
 }

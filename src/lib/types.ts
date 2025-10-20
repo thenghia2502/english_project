@@ -83,6 +83,11 @@ export interface Level {
     }>
 }
 
+export interface LevelShort {
+    id: string
+    name: string
+}
+
 export interface Curriculum {
     id: string
     name: string

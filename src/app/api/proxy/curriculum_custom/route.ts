@@ -30,11 +30,9 @@ export async function GET(request: Request) {
     try {
         const url = new URL(request.url)
         const search = url.search || ''
-    const outgoing = `http://localhost:4000/api/curriculum_custom${search}`
-    console.debug('Proxy: forwarding request to', outgoing)
-    const response = await fetch(outgoing, { cache: 'no-store' });
-    const raw = await response.json();
-    console.debug('Proxy: backend returned (snippet):', JSON.stringify(raw).slice(0, 1000))
+        const outgoing = `http://localhost:4000/api/curriculum_custom${search}`
+        const response = await fetch(outgoing, { cache: 'no-store' });
+        const raw = await response.json();
 
         // Try common unwrap locations: raw, raw.data, raw.data.data
         const candidates = [raw, raw?.data, raw?.data?.data];
@@ -74,11 +72,8 @@ export async function GET(request: Request) {
             if (parsed.success) return new Response(JSON.stringify(parsed.data), { status: 200, headers: { 'Cache-Control': 'no-store' } })
         }
 
-    // Last resort: return an empty items response but include validation issues in logs
-    console.error('Proxy: curriculum_custom response did not match expected schema. Raw sample:', JSON.stringify(raw).slice(0, 2000))
-    return new Response(JSON.stringify({ items: [] }), { status: 200, headers: { 'Cache-Control': 'no-store' } })
-    } catch (error) {
-        console.error("Error in curriculum proxy endpoint:", error);
+        return new Response(JSON.stringify({ items: [] }), { status: 200, headers: { 'Cache-Control': 'no-store' } })
+    } catch {
+        return new Response("Error in curriculum proxy endpoint:", { status: 500 });
     }
-    return new Response("Hello, this is the curriculum proxy endpoint!");
 }

@@ -324,9 +324,9 @@
     "progress": "0"
   },
   {
-    "id": "lw270294",
-    "lesson_id": "ls1759214258991",
-    "work_id": "w1",
+    "id": "lw361720",
+    "lesson_id": "ls1759216142824",
+    "work_id": "w18",
     "pause_time": "2",
     "max_read": "6",
     "show_ipa": "3",
@@ -334,5 +334,113 @@
     "show_ipa_and_word": "2",
     "reads_per_round": "6",
     "progress": "0"
+  },
+  {
+    "id": "lw816360",
+    "lesson_id": "ls1759216142824",
+    "work_id": "w22",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw363866",
+    "lesson_id": "ls1759310220644",
+    "work_id": "w8",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw834486",
+    "lesson_id": "ls1759310279003",
+    "work_id": "w7",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw754419",
+    "lesson_id": "ls1759385615373",
+    "work_id": "w8",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw339520",
+    "lesson_id": "ls1759385615373",
+    "work_id": "w7",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw651140",
+    "lesson_id": "ls1759385615373",
+    "work_id": "w12",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw327665",
+    "lesson_id": "ls1759385615373",
+    "work_id": "w14",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw598077",
+    "lesson_id": "ls1759385615373",
+    "work_id": "w3",
+    "pause_time": "2",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "0"
+  },
+  {
+    "id": "lw2135",
+    "lesson_id": "ls1759214258991",
+    "work_id": "w1",
+    "pause_time": "10",
+    "max_read": "6",
+    "show_ipa": "3",
+    "show_word": "1",
+    "show_ipa_and_word": "2",
+    "reads_per_round": "6",
+    "progress": "6"
   }
 ]

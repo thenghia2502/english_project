@@ -95,7 +95,7 @@ export default function LessonManagementPage() {
     const editLesson = async (lesson: Lesson) => {
         try {
             // Chuyển hướng đến trang edit với mode=edit
-            router.push(`/taobaihoc?mode=edit&lid=${lesson.id}&id=${lesson.curriculum_custom_id}`)
+            router.push(`/lesson/update/${lesson.id}`)
         } catch (error) {
             console.error('Error fetching lesson data for edit:', error)
         }
@@ -112,18 +112,18 @@ export default function LessonManagementPage() {
             minute: "2-digit",
         })
     }
-
+    if (isLoading) {
+        return (
+            <Loading
+                message="Đang tải danh sách bài học..."
+                variant="full-page"
+                className="bg-gray-100"
+            />
+        )
+    }
     return (
         <div className="min-h-screen bg-gray-100">
-            <TopNavigation onNavigateToManagement={() => router.push("/giaotrinh")} />
-
-            {/* Loading State */}
-            {isLoading && (
-                <Loading
-                    variant="skeleton"
-                    skeletonType="quan-ly-bai-hoc"
-                />
-            )}
+            <TopNavigation onNavigateToManagement={() => router.push("/curriculum")} />
 
             {/* Error State */}
             {error && !isLoading && (
@@ -134,7 +134,7 @@ export default function LessonManagementPage() {
                     message="Đã xảy ra lỗi khi tải danh sách khóa học. Vui lòng thử lại."
                     errorDetails={error}
                     onRetry={() => window.location.reload()}
-                    onGoBack={() => router.push("/quanlygiaotrinh")}
+                    onGoBack={() => router.push("/curriculum")}
                     onGoHome={() => router.push("/")}
                 />
             )}
@@ -145,10 +145,10 @@ export default function LessonManagementPage() {
                     type="NO_DATA_FOUND"
                     pageType="quan-ly-bai-hoc"
                     title="Chưa có bài học nào"
-                    message="Bạn chưa tạo bài học nào. Hãy tạo bài học đầu tiên để bắt đầu."
-                    onActionButton={() => router.push("/taobaihoc")}
+                    message="Bạn chưa tạo bài học nào. Hãy chọn giáo trình bạn muốn học và tạo bài học đầu tiên để bắt đầu."
+                    onActionButton={() => router.push("/curriculum")}
                     labelActionButton="Tạo bài học mới"
-                    onGoBack={() => router.push("/quanlygiaotrinh")}
+                    onGoBack={() => router.push("/curriculum")}
                     onGoHome={() => router.push("/")}
                 />
             )}

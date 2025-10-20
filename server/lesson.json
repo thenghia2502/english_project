@@ -76,8 +76,46 @@
     "curriculum_custom_id": "cc1",
     "name": "test11111111",
     "order": 9,
-    "done": "0",
+    "done": "100",
     "created_at": "2025-09-30T06:37:39.844Z",
-    "updated_at": "2025-09-30T06:38:52.231Z"
+    "updated_at": "2025-10-03T06:29:55.511Z"
+  },
+  {
+    "id": "ls1759216142824",
+    "curriculum_custom_id": "cc1",
+    "name": "test22222",
+    "order": 10,
+    "done": 0,
+    "created_at": "2025-09-30T07:09:03.107Z",
+    "updated_at": "2025-09-30T07:09:03.107Z"
+  },
+  {
+    "id": "ls1759310220644",
+    "curriculum_custom_id": "cc690791",
+    "name": "test1",
+    "order": 11,
+    "done": 0,
+    "created_at": "2025-10-01T09:17:01.220Z",
+    "updated_at": "2025-10-01T09:17:01.220Z"
+  },
+  {
+    "id": "ls1759310279003",
+    "curriculum_custom_id": "cc88800",
+    "curriculum_original_id": "c1",
+    "name": "test2",
+    "order": 12,
+    "done": 0,
+    "created_at": "2025-10-01T09:17:59.027Z",
+    "updated_at": "2025-10-01T09:17:59.027Z"
+  },
+  {
+    "id": "ls1759385615373",
+    "curriculum_custom_id": "cc11959",
+    "curriculum_original_id": "c1",
+    "name": "tesst3",
+    "order": 13,
+    "done": "0",
+    "created_at": "2025-10-02T06:13:36.050Z",
+    "updated_at": "2025-10-02T07:07:07.657Z"
   }
 ]

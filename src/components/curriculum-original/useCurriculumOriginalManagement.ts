@@ -1,0 +1,134 @@
+import { useState, useMemo, useEffect } from 'react'
+import { useCurriculumOriginal } from '@/hooks/use-curriculum'
+import { useRouter } from 'next/navigation'
+
+export function useCurriculumOriginalManagement() {
+    const router = useRouter()
+    
+    // State for search and filtering
+    const [searchTerm, setSearchTerm] = useState("")
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    
+    // State for pagination
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize] = useState(16)
+    
+    // Fetch data using existing hook with pagination
+    const { data, isLoading: curriculumsLoading, error: curriculumsError, refetch } = useCurriculumOriginal(currentPage, pageSize, searchTerm)
+    
+    // Extract curriculums from pagination data with memoization
+    const curriculums = useMemo(() => data?.items || [], [data?.items])
+    
+    // Reset to page 1 when search term changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchTerm])
+    
+    // Initialize selected IDs with all curriculums when data loads
+    useEffect(() => {
+        if (curriculums.length > 0 && selectedIds.length === 0) {
+            setSelectedIds(curriculums.map(c => c.id))
+        }
+    }, [curriculums, selectedIds.length])
+    
+    // Since we're using server-side search, don't filter again client-side
+    const filteredCurriculums = curriculums
+    
+    // Get selected curriculums
+    const selectedCurriculums = useMemo(() => {
+        return filteredCurriculums.filter(curriculum => 
+            selectedIds.includes(curriculum.id)
+        )
+    }, [filteredCurriculums, selectedIds])
+    
+    // Actions
+    const handleSearch = (term: string) => {
+        setSearchTerm(term)
+    }
+    
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page)
+    }
+    
+    const handleSelectAll = () => {
+        setSelectedIds(filteredCurriculums.map(c => c.id))
+    }
+    
+    const handleDeselectAll = () => {
+        setSelectedIds([])
+    }
+    
+    const handleToggleSelect = (id: string) => {
+        setSelectedIds(prev => 
+            prev.includes(id) 
+                ? prev.filter(selectedId => selectedId !== id)
+                : [...prev, id]
+        )
+    }
+    
+    const handleEdit = (id: string) => {
+        router.push(`/giaotrinh/update/${id}`)
+    }
+    
+    const handleView = (id: string) => {
+        router.push(`/giaotrinh/view/${id}`)
+    }
+    
+    const handleCreateLesson = (id: string) => {
+        router.push(`/lesson/create?id=${id}`)
+    }
+    
+    const handleRefresh = () => {
+        refetch()
+    }
+    
+    // Computed stats
+    const stats = useMemo(() => {
+        const total = data?.total
+        const selected = selectedIds.length
+        const filtered = filteredCurriculums.length
+        
+        return {
+            total,
+            selected,
+            filtered,
+            totalUnits: curriculums.reduce((sum, c) => sum + (c.list_unit?.length || 0), 0),
+            totalLevels: curriculums.reduce((sum, c) => sum + (c.list_level?.length || 0), 0),
+            totalPages: data?.totalPages
+        }
+    }, [data?.total, data?.totalPages, selectedIds.length, filteredCurriculums.length, curriculums])
+    
+    return {
+        // Data
+        curriculums: filteredCurriculums,
+        selectedCurriculums,
+        stats,
+        
+        // Pagination
+        currentPage,
+        pageSize,
+        totalPages: data?.totalPages || 1,
+        
+        // State
+        searchTerm,
+        selectedIds,
+        isLoading: curriculumsLoading,
+        error: curriculumsError,
+        
+        // Actions
+        handleSearch,
+        handlePageChange,
+        handleSelectAll,
+        handleDeselectAll,
+        handleToggleSelect,
+        handleEdit,
+        handleView,
+        handleCreateLesson,
+        handleRefresh,
+        
+        // Utilities
+        isSelected: (id: string) => selectedIds.includes(id),
+        isAllSelected: selectedIds.length === filteredCurriculums.length && filteredCurriculums.length > 0,
+        isPartiallySelected: selectedIds.length > 0 && selectedIds.length < filteredCurriculums.length
+    }
+}

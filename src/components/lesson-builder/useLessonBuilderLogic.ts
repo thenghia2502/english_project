@@ -14,6 +14,7 @@ interface UseLessonBuilderLogicProps {
     courseName: string
     actualCCId: string
     lessonById?: unknown
+    curriculumId?: string
     
     // Setters
     setLessonWords: React.Dispatch<React.SetStateAction<LessonWord[]>>
@@ -27,6 +28,7 @@ export function useLessonBuilderLogic({
     lessonWords,
     courseName,
     actualCCId,
+    curriculumId,
     lessonById,
     setLessonWords,
     setLessonsFiltered,
@@ -39,14 +41,14 @@ export function useLessonBuilderLogic({
     // Get selected words count
     const getSelectedCount = useCallback(() => {
         let count = 0
-        lessonsFiltered.forEach((lesson) => {
-            count += lesson.words.filter(w => w.selected).length
-        })
+        // lessonsFiltered.forEach((lesson) => {
+        //     count += lesson.words.filter(w => w.selected).length
+        // })
         Object.values(data).forEach((words) => {
             count += words.filter(w => w.selected).length
         })
         return count
-    }, [lessonsFiltered, data])
+    }, [data])
 
     // Transfer selected words to course builder
     const transferSelectedWords = useCallback(() => {
@@ -209,12 +211,13 @@ export function useLessonBuilderLogic({
             done: '0',
             curriculum_custom_id: actualCCId || '',
             createdAt: new Date().toISOString(),
+            curriculum_original_id: curriculumId || ''
         }
 
         try {
             createLessonMutation(newLesson, {
                 onSuccess: () => {
-                    router.push('/quanlybaihoc')
+                    router.push('/baihoc')
                 },
                 onError: (error) => {
                     console.error('Failed to create lesson:', error)
@@ -224,7 +227,7 @@ export function useLessonBuilderLogic({
         } catch (err) {
             console.error('Failed to create course locally', err)
         }
-    }, [courseName, lessonWords, actualCCId, calculateEstimatedTime, createLessonMutation, router])
+    }, [calculateEstimatedTime, courseName, lessonWords, actualCCId, curriculumId, createLessonMutation, router])
 
     // Update existing lesson
     const handleUpdateLesson = useCallback(async () => {
@@ -252,7 +255,7 @@ export function useLessonBuilderLogic({
         try {
             updateLessonMutation(payload, {
                 onSuccess: () => {
-                    router.push('/quanlybaihoc')
+                    router.push('/baihoc')
                 },
                 onError: (error) => {
                     console.error('Failed to update lesson:', error)

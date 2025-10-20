@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation"
 
 interface TopNavigationProps {
     isEditMode: boolean
+    onOpenModal?: () => void
 }
 
-export default function TopNavigation({ isEditMode }: TopNavigationProps) {
+export default function TopNavigation({ isEditMode, onOpenModal }: TopNavigationProps) {
     const router = useRouter()
 
     return (
@@ -17,13 +18,23 @@ export default function TopNavigation({ isEditMode }: TopNavigationProps) {
                     <h1 className="text-xl font-bold text-gray-900">
                         {isEditMode ? "Chỉnh sửa bài học" : "Tạo bài học"}
                     </h1>
-                    <Button 
-                        className="bg-blue-600 text-white" 
-                        onClick={() => router.push("/quanlybaihoc")} 
-                        variant="outline"
-                    >
-                        Quản lý bài học
-                    </Button>
+                    <div className="flex gap-3">
+                        {onOpenModal && (
+                            <Button 
+                                className="bg-green-600 text-white hover:bg-green-700" 
+                                onClick={onOpenModal}
+                            >
+                                Tạo bài học mới
+                            </Button>
+                        )}
+                        <Button 
+                            className="bg-blue-600 text-white" 
+                            onClick={() => router.push("/quanlybaihoc")} 
+                            variant="outline"
+                        >
+                            Quản lý bài học
+                        </Button>
+                    </div>
                 </div>
             </div>
         </nav>

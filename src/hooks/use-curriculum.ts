@@ -1,19 +1,50 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { Curriculum, CurriculumPagination } from '@/lib/types'
-import { useCurriculumStore } from '@/stores/curriculum-store'
+import { useCurriculumOriginalStore } from '@/stores/curriculum-original-store'
+import { useCurriculumCustomStore } from '@/stores/curriculum-custom-store'
 
-const fetchCurriculumOriginalList = async (): Promise<Curriculum[]> => {
-  const response = await fetch('/api/proxy/curriculum_original')
+const fetchCurriculumOriginalList = async (page?: number, limit?: number, searchQuery?: string): Promise<CurriculumPagination> => {
+  const qs: string[] = []
+  if (typeof page === 'number') qs.push(`page=${page}`)
+  if (typeof limit === 'number') qs.push(`limit=${limit}`)
+  if (searchQuery) qs.push(`search_text=${encodeURIComponent(searchQuery)}`)
+  
+  const url = `/api/proxy/curriculum_original${qs.length ? '?' + qs.join('&') : ''}`
+  const response = await fetch(url)
   if (!response.ok) {
     throw new Error('Failed to fetch curriculums')
   }
   const data = await response.json()
-  // Normalize paginated or raw responses to an array of Curriculum
-  if (Array.isArray(data)) return data
-  if (data && data.data && Array.isArray(data.data.items)) return data.data.items
-  if (data && Array.isArray(data.items)) return data.items
-  return []
+
+  // If the proxy already returned a pagination object
+  if (data && Array.isArray(data.items) && typeof data.page === 'number') return data as CurriculumPagination
+
+  // If wrapped under data.data
+  if (data && data.data && Array.isArray(data.data.items)) return data.data as CurriculumPagination
+
+  // If backend returned a plain array, wrap it
+  if (Array.isArray(data)) {
+    return {
+      items: data as Curriculum[],
+      total: data.length,
+      page: 1,
+      limit: data.length,
+      totalPages: 1,
+    }
+  }
+
+  // If payload contains items but missing metadata, fill defaults
+  if (data && Array.isArray(data.items)) {
+    const items = data.items as Curriculum[]
+    const total = data.total ?? items.length
+    const limit = data.limit ?? items.length
+    const page = data.page ?? 1
+    const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit))
+    return { items, total, page, limit, totalPages }
+  }
+
+  return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
 }
 
 const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[]): Promise<CurriculumPagination> => {
@@ -122,12 +153,18 @@ export const curriculumKeys = {
 }
 
 // Hooks
-export const useCurriculumOriginal = () => {
-  const setOriginal = useCurriculumStore(s => s.setOriginalCurriculums)
+export const useCurriculumOriginal = (page?: number, limit?: number, searchQuery?: string, enabled: boolean = true) => {
+  const setOriginal = useCurriculumOriginalStore(s => s.setPagination)
 
-  const query = useQuery<Curriculum[], Error>({
-    queryKey: curriculumKeys.lists(),
-    queryFn: fetchCurriculumOriginalList,
+  const query = useQuery<CurriculumPagination, Error>({
+    // Include page, limit, searchQuery in queryKey so the query refetches when filters change
+    queryKey: [...curriculumKeys.lists(), { page, limit, searchQuery }],
+    queryFn: ({ queryKey }) => {
+      // queryKey shape: [..., { page, limit, searchQuery }]
+      const last = queryKey[queryKey.length - 1] as { page?: number; limit?: number; searchQuery?: string }
+      return fetchCurriculumOriginalList(last?.page, last?.limit, last?.searchQuery)
+    },
+    enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
@@ -140,7 +177,7 @@ export const useCurriculumOriginal = () => {
 
 // Hook: get list of curriculum_custom
 export const useCurriculumCustomList = (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[], enabled: boolean = true) => {
-  const setCustom = useCurriculumStore(s => s.setCustomCurriculums)
+  const setCustom = useCurriculumCustomStore(s => s.setPagination)
 
   const query = useQuery<CurriculumPagination, Error>({
     // include searchQuery and curriculumOriginalIds so the query refetches when filters change
@@ -151,12 +188,14 @@ export const useCurriculumCustomList = (page?: number, limit?: number, searchQue
       return fetchCurriculumCustomList(last?.page, last?.limit, last?.searchQuery, last?.curriculumOriginalIds)
     },
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000, // Increase stale time to 2 minutes to reduce unnecessary refetches
+    retry: 1, // Only retry once on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   })
 
   useEffect(() => {
-    if (query.data && Array.isArray(query.data.items)) {
-      setCustom(query.data.items)
+    if (query.data) {
+      setCustom(query.data)
     }
   }, [query.data, setCustom])
 
@@ -186,44 +225,92 @@ export const useCurriculumCustomById = (id: string) => {
 
 export const useCreateCurriculumCustom = () => {
   const queryClient = useQueryClient()
+  const store = useCurriculumCustomStore()
   
   return useMutation({
     mutationFn: createCurriculumCustom,
     onSuccess: (created: Curriculum) => {
-      // Append to store eagerly
-      const s = useCurriculumStore.getState()
-      const next = [...(s.customCurriculums || []), created]
-      s.setCustomCurriculums(next)
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.lists() })
+      // Update store first for immediate UI feedback
+      const currentCurriculums = store.curriculums
+      const next = [...currentCurriculums, created]
+      store.setCurriculums(next)
+      
+      // Invalidate queries to ensure fresh data
+      queryClient.invalidateQueries({ 
+        queryKey: curriculumKeys.customLists(),
+        refetchType: 'all'
+      })
     },
+    retry: 1, // Only retry once on failure
   })
 }
 
 export const useUpdateCurriculumCustom = () => {
   const queryClient = useQueryClient()
+  const store = useCurriculumCustomStore()
   
   return useMutation({
     mutationFn: updateCurriculumCustom,
     onSuccess: (data: Curriculum) => {
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.lists() })
-      queryClient.setQueryData(curriculumKeys.detail(data.id), data)
-      const s = useCurriculumStore.getState()
-      s.updateCustomCurriculum(data.id, data)
+      // Update store first for immediate UI feedback
+      store.updateCurriculum(data.id, data)
+      
+      // Update the specific query data in cache
+      queryClient.setQueryData([...curriculumKeys.details(), 'custom', data.id], data)
+      
+      // Invalidate list queries to ensure consistency
+      queryClient.invalidateQueries({ 
+        queryKey: curriculumKeys.customLists(),
+        refetchType: 'all'
+      })
     },
+    retry: 1, // Only retry once on failure
   })
 }
 
 export const useDeleteCurriculumCustom = () => {
   const queryClient = useQueryClient()
+  const store = useCurriculumCustomStore()
   
   return useMutation({
     mutationFn: deleteCurriculumCustom,
-    onSuccess: (_data, deletedId: string) => {
-      queryClient.invalidateQueries({ queryKey: curriculumKeys.lists() })
-      queryClient.removeQueries({ queryKey: curriculumKeys.detail(deletedId) })
-      const s = useCurriculumStore.getState()
-      const remaining = (s.customCurriculums || []).filter(c => c.id !== deletedId)
-      s.setCustomCurriculums(remaining)
+    onMutate: async (deletedId: string) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: curriculumKeys.customLists() })
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueriesData({ queryKey: curriculumKeys.customLists() })
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData({ queryKey: curriculumKeys.customLists() }, (old: unknown) => {
+        if (!old) return old
+        const oldData = old as CurriculumPagination
+        if (Array.isArray(oldData.items)) {
+          return { ...oldData, items: oldData.items.filter((item: Curriculum) => item.id !== deletedId) }
+        }
+        return old
+      })
+
+      // Update store immediately
+      store.deleteCurriculum(deletedId)
+
+      // Return a context object with the snapshotted value
+      return { previousData }
     },
+    onError: (err, deletedId, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousData) {
+        context.previousData.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have correct data
+      queryClient.invalidateQueries({ 
+        queryKey: curriculumKeys.customLists()
+      })
+    },
+    retry: 1, // Only retry once on failure
   })
 }

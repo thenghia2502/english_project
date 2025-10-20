@@ -10,8 +10,7 @@ export async function DELETE(request: Request) {
         });
         const data = await response.json();
         return new Response(JSON.stringify(data), { status: 200 });
-    } catch (error) {
-        console.error("Error in curriculum proxy endpoint:", error);
+    } catch {
+        return new Response("Error in curriculum proxy endpoint:", { status: 500 });
     }
-    return new Response("Hello, this is the curriculum proxy endpoint!");
 }

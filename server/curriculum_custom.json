@@ -1,85 +1,5 @@
 [
   {
-    "id": "cc1",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum A",
-    "description": "",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-19T08:45:33.531Z"
-  },
-  {
-    "id": "cc2",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum B",
-    "description": "Curriculum for Class B",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc3",
-    "curriculum_original_id": "c1",
-    "name": "Custom Curriculum C",
-    "description": "Curriculum for Class C",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc4",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum D",
-    "description": "Curriculum for Class D",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc5",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum E",
-    "description": "Curriculum for Class E",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc6",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum F",
-    "description": "Curriculum for Class F",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc7",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum G",
-    "description": "Curriculum for Class G",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc8",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum H",
-    "description": "Curriculum for Class H",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
-    "id": "cc9",
-    "curriculum_original_id": "c1",
-    "level_id": "l1",
-    "name": "Custom Curriculum I",
-    "description": "Curriculum for Class I",
-    "created_at": "2025-09-16T10:20:00Z",
-    "updated_at": "2025-09-16T10:20:00Z"
-  },
-  {
     "id": "cc10",
     "curriculum_original_id": "c1",
     "level_id": "l1",
@@ -249,5 +169,248 @@
     "description": "",
     "created_at": "2025-09-26T08:13:26.511Z",
     "updated_at": "2025-09-26T08:13:26.511Z"
+  },
+  {
+    "id": "cc205116",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "bai111111",
+    "description": "",
+    "created_at": "2025-09-30T07:04:53.129Z",
+    "updated_at": "2025-09-30T07:04:53.129Z"
+  },
+  {
+    "id": "cc841598",
+    "curriculum_original_id": "c10",
+    "level_id": "l1",
+    "name": "test_create_cc_10",
+    "description": "",
+    "created_at": "2025-10-01T08:02:58.524Z",
+    "updated_at": "2025-10-01T08:02:58.524Z"
+  },
+  {
+    "id": "cc922686",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T08:14:06.968Z",
+    "updated_at": "2025-10-01T08:14:06.968Z"
+  },
+  {
+    "id": "cc123421",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T08:15:00.808Z",
+    "updated_at": "2025-10-01T08:15:00.808Z"
+  },
+  {
+    "id": "cc675104",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T08:19:09.350Z",
+    "updated_at": "2025-10-01T08:19:09.350Z"
+  },
+  {
+    "id": "cc984828",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T08:20:26.109Z",
+    "updated_at": "2025-10-01T08:20:26.109Z"
+  },
+  {
+    "id": "cc290502",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T09:12:15.470Z",
+    "updated_at": "2025-10-01T09:12:15.470Z"
+  },
+  {
+    "id": "cc690791",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T09:16:45.269Z",
+    "updated_at": "2025-10-01T09:16:45.269Z"
+  },
+  {
+    "id": "cc88800",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-01T09:17:50.388Z",
+    "updated_at": "2025-10-01T09:17:50.388Z"
+  },
+  {
+    "id": "cc11959",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T06:13:01.296Z",
+    "updated_at": "2025-10-02T06:13:01.296Z"
+  },
+  {
+    "id": "cc901710",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:28:32.143Z",
+    "updated_at": "2025-10-02T07:28:32.143Z"
+  },
+  {
+    "id": "cc556511",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:29:10.092Z",
+    "updated_at": "2025-10-02T07:29:10.092Z"
+  },
+  {
+    "id": "cc217769",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:32:06.572Z",
+    "updated_at": "2025-10-02T07:32:06.572Z"
+  },
+  {
+    "id": "cc969542",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:35:11.183Z",
+    "updated_at": "2025-10-02T07:35:11.183Z"
+  },
+  {
+    "id": "cc425355",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:36:33.025Z",
+    "updated_at": "2025-10-02T07:36:33.025Z"
+  },
+  {
+    "id": "cc806807",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:37:18.537Z",
+    "updated_at": "2025-10-02T07:37:18.537Z"
+  },
+  {
+    "id": "cc964890",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T07:37:30.519Z",
+    "updated_at": "2025-10-02T07:37:30.519Z"
+  },
+  {
+    "id": "cc910535",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:08:46.103Z",
+    "updated_at": "2025-10-02T11:08:46.103Z"
+  },
+  {
+    "id": "cc864490",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:09:06.121Z",
+    "updated_at": "2025-10-02T11:09:06.121Z"
+  },
+  {
+    "id": "cc514220",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:09:26.131Z",
+    "updated_at": "2025-10-02T11:09:26.131Z"
+  },
+  {
+    "id": "cc711577",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:12:46.473Z",
+    "updated_at": "2025-10-02T11:12:46.473Z"
+  },
+  {
+    "id": "cc656824",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:13:04.212Z",
+    "updated_at": "2025-10-02T11:13:04.212Z"
+  },
+  {
+    "id": "cc334685",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:14:06.884Z",
+    "updated_at": "2025-10-02T11:14:06.884Z"
+  },
+  {
+    "id": "cc385149",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:15:04.193Z",
+    "updated_at": "2025-10-02T11:15:04.193Z"
+  },
+  {
+    "id": "cc268090",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:15:25.813Z",
+    "updated_at": "2025-10-02T11:15:25.813Z"
+  },
+  {
+    "id": "cc795705",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:16:27.808Z",
+    "updated_at": "2025-10-02T11:16:27.808Z"
+  },
+  {
+    "id": "cc269820",
+    "curriculum_original_id": "c1",
+    "level_id": "l1",
+    "name": "English A1 - Level 1",
+    "description": "Giáo trình tùy chỉnh từ English A1",
+    "created_at": "2025-10-02T11:17:46.212Z",
+    "updated_at": "2025-10-02T11:17:46.212Z"
   }
 ]

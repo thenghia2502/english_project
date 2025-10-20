@@ -1,6 +1,6 @@
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
+  const { id } = await params
     try {
         const res = await fetch(`http://localhost:4000/api/curriculum_custom/${id}`)
         const json = await res.json()

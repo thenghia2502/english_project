@@ -18,7 +18,7 @@ export default function TopNavigation({ lessonName }: TopNavigationProps) {
                         {lessonName}
                     </h1>
                     <Button
-                        onClick={() => window.location.href = '/quanlybaihoc'}
+                        onClick={() => window.location.href = '/lesson'}
                         className="ml-4 bg-blue-500 text-white"
                     >
                         Quản lý bài học

@@ -4,6 +4,20 @@ const fs = require('fs').promises
 const app = express()
 const port = process.env.PORT || 4000
 
+// Enable CORS for all routes
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200)
+    }
+    
+    next()
+})
+
 app.use(express.json())
 
 // JSON parse error handler: catch body-parser/express.json syntax errors and return 400
@@ -105,7 +119,7 @@ app.get('/api/curriculum_original', async (req, res) => {
         } catch { }
 
         // For each curriculum, attach list_level and list_unit (units from all levels) and their works
-        const out = curriculum.map(item => {
+        let out = curriculum.map(item => {
             const itemLevels = (levels.filter(l => l.curriculum_original_id === item.id) || []).sort((a, b) => (a.order || 0) - (b.order || 0))
             const levelIds = itemLevels.map(l => l.id)
 
@@ -117,8 +131,35 @@ app.get('/api/curriculum_original', async (req, res) => {
             return Object.assign({}, item, { list_level: itemLevels, list_unit: itemUnits })
         })
 
-        // Pagination parameters ignored currently — return full list
-        res.json({ success: true, data: out, message: 'Fetched curriculum data successfully' })
+        // Apply search filter if search_text is provided
+        let search_text = null
+        if (req.query.search_text) {
+            search_text = String(req.query.search_text).toLowerCase()
+            out = out.filter(item => 
+                item.name.toLowerCase().includes(search_text) || 
+                (item.description && item.description.toLowerCase().includes(search_text))
+            )
+        }
+
+        // Apply pagination query params: ?page=1&limit=16&search_text=''
+        const page = Math.max(1, parseInt(req.query.page || '1', 10))
+        const limit = Math.max(1, parseInt(req.query.limit || '16', 10))
+        const total = out.length
+        const totalPages = Math.max(1, Math.ceil(total / limit))
+        const start = (page - 1) * limit
+        const items = out.slice(start, start + limit)
+
+        res.json({ 
+            success: true, 
+            data: { 
+                items, 
+                total, 
+                page, 
+                limit, 
+                totalPages 
+            }, 
+            message: 'Fetched curriculum data successfully' 
+        })
     } catch (err) {
         console.error('Error reading curriculum data', err)
         res.status(500).send('Server error')
@@ -488,7 +529,7 @@ app.delete('/api/curriculum_custom/delete', async (req, res) => {
         await fs.writeFile(ccPath, JSON.stringify(ccList, null, 2), 'utf-8')
         await fs.writeFile(ccuPath, JSON.stringify(ccuList, null, 2), 'utf-8')
 
-        return res.status(204).send()
+        return res.status(200).json({ success: true, message: 'Deleted curriculum_custom successfully' })
     } catch (err) {
         console.error('Error deleting curriculum_custom', err)
         return res.status(500).send('Server error')
@@ -512,6 +553,7 @@ app.post('/api/lesson/create', async (req, res) => {
         const newLesson = Object.assign({
             id: newId,
             curriculum_custom_id: payload.curriculum_custom_id,
+            curriculum_original_id: payload.curriculum_original_id || null,
             name: payload.name,
             order: payload.order || (lessons.length + 1),
             done: 0,
@@ -662,7 +704,7 @@ app.delete('/api/lesson/delete', async (req, res) => {
         await fs.writeFile(lessonsPath, JSON.stringify(lessons, null, 2), 'utf-8')
         await fs.writeFile(lessonWorkPath, JSON.stringify(lessonWorks, null, 2), 'utf-8')
 
-        return res.status(204).send()
+        return res.status(200).json({ success: true, message: 'Deleted lesson successfully' })
     } catch (err) {
         console.error('Error deleting lesson', err)
         return res.status(500).send('Server error')
@@ -717,6 +759,170 @@ async function resolveWorksPath() {
     }
     return null
 }
+
+// API endpoint to save notes for a book
+app.post('/api/notes/save', async (req, res) => {
+    try {
+        const payload = req.body || {}
+        const { bookId, unitId, content } = payload
+
+        if (!bookId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'bookId is required' 
+            })
+        }
+
+        if (!unitId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'unitId is required' 
+            })
+        }
+
+        if (content === undefined || content === null) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'content is required' 
+            })
+        }
+
+        // Create notes directory if it doesn't exist
+        const notesDir = path.join(process.cwd(), 'server', 'notes')
+        try {
+            await fs.mkdir(notesDir, { recursive: true })
+        } catch {
+            // Directory might already exist, continue
+        }
+
+        // Save note to file named after bookId
+        const noteFilePath = path.join(notesDir, `${bookId}.json`)
+        const timestamp = new Date().toISOString()
+        
+        // Load existing notes for this book
+        let bookNotes = {}
+        try {
+            const existing = await fs.readFile(noteFilePath, 'utf-8')
+            bookNotes = JSON.parse(existing)
+        } catch {
+            // File doesn't exist yet, start fresh
+        }
+
+        // Update note for this specific unit
+        bookNotes[unitId] = {
+            content,
+            lastUpdated: timestamp
+        }
+
+        await fs.writeFile(noteFilePath, JSON.stringify(bookNotes, null, 2), 'utf-8')
+
+        return res.status(200).json({ 
+            success: true, 
+            message: 'Note saved successfully',
+            data: {
+                bookId,
+                unitId,
+                content,
+                lastUpdated: timestamp
+            }
+        })
+    } catch (err) {
+        console.error('Error saving note', err)
+        return res.status(500).json({ 
+            success: false, 
+            error: 'Server error while saving note' 
+        })
+    }
+})
+
+// API endpoint to get notes for a book
+app.get('/api/notes/:bookId', async (req, res) => {
+    try {
+        const { bookId } = req.params
+
+        if (!bookId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'bookId is required' 
+            })
+        }
+
+        const noteFilePath = path.join(process.cwd(), 'server', 'notes', `${bookId}.json`)
+        
+        // Check if note file exists
+        const exists = await fileExists(noteFilePath)
+        if (!exists) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No notes found for this book' 
+            })
+        }
+
+        const noteContent = await fs.readFile(noteFilePath, 'utf-8')
+        const bookNotes = JSON.parse(noteContent)
+
+        return res.status(200).json({ 
+            success: true, 
+            data: bookNotes
+        })
+    } catch (err) {
+        console.error('Error reading note', err)
+        return res.status(500).json({ 
+            success: false, 
+            error: 'Server error while reading note' 
+        })
+    }
+})
+
+// API endpoint to get note for a specific unit
+app.get('/api/notes/:bookId/:unitId', async (req, res) => {
+    try {
+        const { bookId, unitId } = req.params
+
+        if (!bookId || !unitId) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'bookId and unitId are required' 
+            })
+        }
+
+        const noteFilePath = path.join(process.cwd(), 'server', 'notes', `${bookId}.json`)
+        
+        // Check if note file exists
+        const exists = await fileExists(noteFilePath)
+        if (!exists) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No notes found for this book' 
+            })
+        }
+
+        const noteContent = await fs.readFile(noteFilePath, 'utf-8')
+        const bookNotes = JSON.parse(noteContent)
+
+        if (!bookNotes[unitId]) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'No note found for this unit' 
+            })
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            data: {
+                bookId,
+                unitId,
+                ...bookNotes[unitId]
+            }
+        })
+    } catch (err) {
+        console.error('Error reading note', err)
+        return res.status(500).json({ 
+            success: false, 
+            error: 'Server error while reading note' 
+        })
+    }
+})
 
 if (require.main === module) {
     app.listen(port, () => console.log(`Express server running on http://localhost:${port}`))

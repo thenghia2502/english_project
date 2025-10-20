@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useCurriculumCustomById, useLessonById } from "@/hooks"
-import { Lesson, LessonWord, Word } from "@/lib/types"
+import { Lesson, LessonWord, Word, Curriculum, Level } from "@/lib/types"
 import Loading from "@/components/ui/loading"
 
 // Components
@@ -16,43 +16,88 @@ import EmptyLessonState from "@/components/lesson-builder/EmptyLessonState"
 import LessonWordsTable from "@/components/lesson-builder/LessonWordsTable"
 import { useLessonBuilderLogic } from "@/components/lesson-builder/useLessonBuilderLogic"
 import { LocalWord, LessonWithWords } from "@/components/lesson-builder/types"
+import Modal from "./Modal"
 
 export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update', id?: string }) {
     // URL parameters
     const searchParams = useSearchParams()
-    const ccId = searchParams?.get("lid")
-    const lessonId = id || ''
-    
+    const curriculumId = searchParams?.get("id") || ''
+    const lessonId = id
+
     // State management
-    const [isEditMode, setIsEditMode] = useState(false)
-    const [actualCCId, setActualCCId] = useState<string>(ccId || '')
-    const [mounted, setMounted] = useState(false)
+    const isEditMode = mode === 'update'
+    const [actualCCId, setActualCCId] = useState<string>('')
+    // const [mounted, setMounted] = useState(false)
     const [data, setData] = useState<{ [key: string]: LocalWord[] }>({})
     const [lessonsFiltered, setLessonsFiltered] = useState<LessonWithWords[]>([])
     const [lessonWords, setLessonWords] = useState<LessonWord[]>([])
     const [courseName, setCourseName] = useState("")
     const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
     const [expandedChildGroups, setExpandedChildGroups] = useState<Set<string>>(new Set())
+    const [isModalOpen, setIsModalOpen] = useState(mode === 'create')
 
-    // React Query hooks
-    const { data: customCurriculum, isLoading: customCurriculumLoading } = useCurriculumCustomById(actualCCId || '')
+    // React Query hooks - chỉ fetch khi thực sự cần thiết
+    const { data: customCurriculum, isLoading: customCurriculumLoading } = useCurriculumCustomById(
+        // Fetch curriculum custom khi có actualCCId (trong cả create và edit mode)
+        // Create mode: actualCCId được set sau khi Modal tạo thành công
+        // Edit mode: actualCCId được extract từ lesson data
+        actualCCId || ''
+    )
     const { data: lessonById, isLoading: lessonByIdLoading } = useLessonById(lessonId)
 
-    const isLoading = customCurriculumLoading || lessonByIdLoading
+    // Debug logging với thông tin chi tiết hơn về React Query
+    useEffect(() => {
+        console.log('🔍 Debug state:', {
+            mode,
+            isEditMode,
+            curriculumId, // curriculum ORIGINAL ID từ URL
+            actualCCId,   // curriculum CUSTOM ID
+            lessonId,
+            hasCustomCurriculum: !!customCurriculum,
+            hasLessonById: !!lessonById,
+            customCurriculumLoading,
+            lessonByIdLoading,
+            shouldFetchCustomCurriculum: !!actualCCId, // enabled condition for useCurriculumCustomById
+            modalWillRender: !isEditMode,
+            reactQueryState: {
+                customCurriculumEnabled: !!actualCCId, // Updated: fetch khi có actualCCId (cả create và edit mode)
+                lessonByIdEnabled: !!lessonId
+            }
+        })
+
+        // Thêm warning nếu có request không mong muốn
+        if (!actualCCId && customCurriculumLoading) {
+            console.warn('⚠️ customCurriculumLoading = true nhưng actualCCId is empty!')
+        }
+    }, [mode, isEditMode, curriculumId, actualCCId, lessonId, customCurriculum, lessonById, customCurriculumLoading, lessonByIdLoading])
+
+    // const isLoading = lessonByIdLoading || (actualCCId && customCurriculumLoading)
 
     // Handle edit mode
-    useEffect(() => {
-        if (mode === 'update') {
-            setIsEditMode(true)
-        } else {
-            setIsEditMode(false)
-            setActualCCId(ccId || '')
-        }
-    }, [mode, ccId])
+    // useEffect(() => {
+    //     if (mode === 'update') {
+    //         setIsEditMode(true)
+    //     } else {
+    //         setIsEditMode(false)
+    //     }
+    // }, [mode])
 
+    // Extract curriculum_custom_id sớm để load curriculum data
     useEffect(() => {
-        setMounted(true)
-    }, [])
+        if (isEditMode && lessonById && !actualCCId) {
+            const ccid = (lessonById as unknown as Record<string, unknown>)['curriculum_custom_id']
+            if (ccid) {
+                console.log('🔄 Setting actualCCId early (update mode):', String(ccid))
+                setActualCCId(String(ccid))
+            }
+        }
+        // Trong create mode, KHÔNG set actualCCId từ curriculumId vì đó là curriculum original ID
+        // actualCCId chỉ được set khi Modal tạo thành công curriculum custom
+    }, [isEditMode, lessonById, actualCCId])
+
+    // useEffect(() => {
+    //     setMounted(true)
+    // }, [])
 
     // Normalize units
     const normalizedUnits = useMemo(() => {
@@ -66,7 +111,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     // Initialize selectedUnitIds and data
     useEffect(() => {
         if (!Array.isArray(normalizedUnits) || normalizedUnits.length === 0) return
-        
+
         const allIds = normalizedUnits.map((u) => u.id)
         setSelectedUnitIds(allIds)
 
@@ -112,7 +157,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         setData((prev) => {
             if (Object.keys(prev).length > 0) return prev
             const initialData: { [key: string]: LocalWord[] } = {}
-            visibleUnits.forEach((it) => { 
+            visibleUnits.forEach((it) => {
                 initialData[it.id] = it.list_word?.map((w: Word) => ({
                     id: w.id,
                     word: w.word,
@@ -122,7 +167,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     done: false,
                     popularity: (w.popularity as number) || 0,
                     belong: ''
-                })) || [] 
+                })) || []
             })
             return initialData
         })
@@ -163,8 +208,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             console.log('📝 Incoming words from lesson:', incomingWords)
             setLessonWords(incomingWords)
 
-            const ccid = (lb as unknown as Record<string, unknown>)['curriculum_custom_id']
-            if (ccid) setActualCCId(String(ccid))
+            // actualCCId đã được set ở useEffect trên rồi
 
             // Wait for the next tick to ensure normalizedUnits is ready
             setTimeout(() => {
@@ -183,7 +227,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     }
                     return out
                 })
-                
+
                 console.log('🎯 Edit mode data prefilled successfully')
             }, 100)
         } catch (err) {
@@ -229,46 +273,97 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         courseName,
         actualCCId,
         lessonById,
+        curriculumId,
         setLessonWords,
         setLessonsFiltered,
         setData
     })
 
     // Loading state
-    if (mounted && isLoading) {
-        return (
-            <Loading 
-                variant="skeleton" 
-                skeletonType="tao-bai-hoc"
-            />
-        )
+    // if (mounted && isLoading) {
+    //     return (
+    //         <Loading
+    //             message="Đang tải dữ liệu bài học..."
+    //             variant="full-page"
+    //         />
+    //     )
+    // }
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false)
+    }
+// const router = useRouter()
+    const handleOpenModal = () => {
+        // if (mode !== 'create')
+        setIsModalOpen(true)
+        // else router.push('/lesson/create')
+    }
+
+    // Xử lý khi Modal tạo thành công và trả về data
+    const handleModalSuccess = (data: {
+        curriculumCustomId: string,
+        selectedUnits: string[],
+        curriculum: Curriculum,
+        level: Level | undefined
+    }) => {
+        console.log('🎉 Modal tạo thành công với data:', data)
+
+        // Cập nhật actualCCId với curriculum custom vừa tạo
+        console.log('🔄 Setting actualCCId from Modal success:', data.curriculumCustomId)
+        setActualCCId(data.curriculumCustomId)
+
+        // Có thể cập nhật selectedUnitIds nếu cần
+        // if (data.selectedUnits && data.selectedUnits.length > 0) {
+        //     setSelectedUnitIds(data.selectedUnits)
+        // }
+
+        // Cập nhật course name dựa trên curriculum và level đã chọn
+        // const newCourseName = `${data.curriculum?.name || 'Curriculum'} - ${data.level?.name || 'Level'}`
+        // setCourseName(newCourseName)
+
+        console.log('✅ Lesson builder đã nhận được thông tin units đã chọn:', data.selectedUnits)
+        console.log('🔄 Will trigger useCurriculumCustomById with actualCCId:', data.curriculumCustomId)
     }
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <TopNavigation isEditMode={isEditMode} />
-            
+            {/* Chỉ render Modal trong create mode để tránh fetch không cần thiết */}
+            {mode === 'create' && (
+                <Modal
+                    id={curriculumId}
+                    isOpen={isModalOpen}
+                    onClose={handleCloseModal}
+                    onSuccess={handleModalSuccess}
+                />
+            )}
+            <TopNavigation
+                isEditMode={isEditMode}
+                onOpenModal={handleOpenModal}
+            />
+
             <div className="pt-20 h-screen flex">
-                {/* Left Panel - Word Selection */}
                 <div className="w-1/3 bg-gray-100 border-r border-gray-300 overflow-y-auto">
-                    <div className="p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-6">Chọn từ vựng</h2>
-                        
-                        <UnitFilter 
-                            units={normalizedUnits}
-                            selectedUnitIds={selectedUnitIds}
-                            setSelectedUnitIds={setSelectedUnitIds}
-                        />
-                        
-                        <WordSelectionPanel
-                            units={normalizedUnits}
-                            selectedUnitIds={selectedUnitIds}
-                            data={data}
-                            expandedChildGroups={expandedChildGroups}
-                            setData={setData}
-                            setExpandedChildGroups={setExpandedChildGroups}
-                        />
-                    </div>
+                    { customCurriculumLoading || lessonByIdLoading ? 
+                    <div className="h-full flex justify-center items-center"><Loading message="Đang tải giáo trình..." /></div> : (
+                        <div className="p-6">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-6">Chọn từ vựng</h2>
+
+                            <UnitFilter
+                                units={normalizedUnits}
+                                selectedUnitIds={selectedUnitIds}
+                                setSelectedUnitIds={setSelectedUnitIds}
+                            />
+
+                            <WordSelectionPanel
+                                units={normalizedUnits}
+                                selectedUnitIds={selectedUnitIds}
+                                data={data}
+                                expandedChildGroups={expandedChildGroups}
+                                setData={setData}
+                                setExpandedChildGroups={setExpandedChildGroups}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Middle Panel - Transfer Control */}
@@ -279,6 +374,8 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
                 {/* Right Panel - Lesson Building */}
                 <div className="flex-1 border-l border-gray-300 bg-gray-100 overflow-y-auto">
+                    { lessonByIdLoading ? 
+                    <div className="h-full flex justify-center items-center"><Loading message="Đang tải danh sách từ vựng..." /></div> : (
                     <div className="p-6">
                         <LessonHeader
                             lessonWordsCount={lessonWords.length}
@@ -301,7 +398,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                                 removeLessonWord={removeLessonWord}
                             />
                         )}
-                    </div>
+                    </div> )}
                 </div>
             </div>
         </div>

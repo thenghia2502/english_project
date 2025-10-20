@@ -312,8 +312,8 @@ export default function VocabTrainer() {
     if (isPageLoading) {
         return (
             <Loading
-                variant="skeleton"
-                skeletonType="vocab-trainer"
+                message="Đang tải dữ liệu từ vựng..."
+                variant="full-page"
             />
         )
     }

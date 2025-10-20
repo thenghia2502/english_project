@@ -56,8 +56,10 @@ export const useLessons = () => {
   return useQuery({
     queryKey: lessonKeys.lists(),
     queryFn: fetchLessonList,
-    staleTime: 0, // Luôn refetch để đảm bảo dữ liệu mới nhất
-    gcTime: 0, // Không cache data
+    staleTime: 1000 * 60 * 5, // 5 phút stale time để tránh excessive refetch
+    gcTime: 1000 * 60 * 10, // 10 phút cache time
+    refetchOnMount: false, // Không auto refetch khi mount
+    refetchOnWindowFocus: false, // Không refetch khi focus window
   })
 }
 
@@ -100,11 +102,24 @@ export const useUpdateLesson = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: updateLesson,
-    onSuccess: (data) => {
-      // Chỉ cập nhật cache local, không refetch
+    onSuccess: async (data) => {
+      // Debug log để track khi nào được gọi
+      console.log('🔄 useUpdateLesson onSuccess called with:', data.id)
+      
+      // Cập nhật cache local cho lesson detail
       queryClient.setQueryData(lessonKeys.detail(data.id), data)
-      // Invalidate lists để cập nhật progress/done status
-      queryClient.invalidateQueries({ queryKey: lessonKeys.lists() })
+      
+      // Throttle invalidation để tránh multiple calls
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Invalidate lessons list một cách controlled
+      await queryClient.invalidateQueries({ 
+        queryKey: lessonKeys.lists(),
+        exact: true,
+        refetchType: 'active'
+      })
+      
+      console.log('✅ useUpdateLesson invalidation completed')
     },
   })
 }
