@@ -1,6 +1,5 @@
 "use client"
 
-import { Unit } from "@/lib/types"
 import { FormValues } from "@/lib/types"
 import { Control } from "react-hook-form"
 import LessonGrid from "./LessonGrid"
@@ -8,8 +7,26 @@ import PaginationControls from "./PaginationControls"
 
 interface LessonSelectionSectionProps {
   control: Control<FormValues>
-  baiList: Unit[]
-  currentItems: Unit[]
+  baiList: {
+    unit_id: string;
+    unit_name: string;
+    unit_description?: string | undefined;
+    unit_order?: number | undefined;
+    level_id: string;
+    level_name: string;
+    level_code: string;
+    level_description?: string | undefined;
+}[]
+  currentItems: {
+    unit_id: string;
+    unit_name: string;
+    unit_description?: string | undefined;
+    unit_order?: number | undefined;
+    level_id: string;
+    level_name: string;
+    level_code: string;
+    level_description?: string | undefined;
+}[]
   currentPage: number
   totalPages: number
   totalItems: number

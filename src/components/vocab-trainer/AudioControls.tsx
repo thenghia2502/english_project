@@ -1,15 +1,17 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { LessonWord } from "@/lib/types"
 
 interface AudioControlsProps {
     isLooping: boolean
     isPageLoading: boolean
     isDialectChanging: boolean
     audioError: boolean
-    vocabularyData: Array<{ progress: string; maxRead: string }>
+    vocabularyData: Array<LessonWord>
     onAudioToggle: () => void
     onRetryAudio: () => void
+    onRestart: () => void
 }
 
 export default function AudioControls({
@@ -19,7 +21,8 @@ export default function AudioControls({
     audioError,
     vocabularyData,
     onAudioToggle,
-    onRetryAudio
+    onRetryAudio,
+    onRestart
 }: AudioControlsProps) {
     if (audioError) {
         return (
@@ -38,7 +41,7 @@ export default function AudioControls({
     }
 
     const isCompleted = vocabularyData.every(word => 
-        Number(word.progress || 0) >= Number(word.maxRead || 3)
+        Number(word.word_progress || 0) >= Number(word.word_max_read || 3)
     )
 
     return (
@@ -51,7 +54,7 @@ export default function AudioControls({
                         ? "bg-red-600 hover:bg-red-700 text-white"
                         : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
-                onClick={onAudioToggle}
+                onClick={isCompleted ? onRestart : onAudioToggle}
                 disabled={isPageLoading || isDialectChanging}
             >
                 {isDialectChanging 

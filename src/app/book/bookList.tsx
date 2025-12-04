@@ -30,17 +30,17 @@ export function BookList({ levels }: BookListProps) {
     return (
         <div className="space-y-12">
             {/* Books by Level */}
-            <div className="space-y-20">
+            <div className="space-y-5">
                 {levels.map((level) => (
-                    <section key={level.level} className="space-y-8">
+                    <section key={level.level} className="space-y-8 mt-5">
                         <div className="space-y-2">
                             <div 
                                 className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => toggleLevel(level.level)}
                             >
                                 <div className="h-1 w-12 rounded-full bg-primary" />
-                                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{level.level}</h2>
-                                <span className="text-2xl text-muted-foreground ml-2">
+                                <h2 className="text-xl font-bold tracking-tight sm:text-4xl">{level.level}</h2>
+                                <span className="text-xl text-muted-foreground ml-2">
                                     {expandedLevels.has(level.level) ? '▼' : '▶'}
                                 </span>
                             </div>

@@ -11,9 +11,9 @@ export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
         return <span className="text-4xl text-gray-400">Đang tải...</span>
     }
 
-    const readCount = Number(currentWord.progress)
-    const ipaRounds = Number(currentWord.show_ipa)
-    const wordRounds = Number(currentWord.show_word)
+    const readCount = Number(currentWord.word_progress)
+    const ipaRounds = Number(currentWord.word_show_ipa)
+    const wordRounds = Number(currentWord.word_show_word)
 
     const wordStart = ipaRounds
     const bothStart = ipaRounds + wordRounds
@@ -28,7 +28,7 @@ export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
     }
 
     if (phase === 1) {
-        return <span className="ipa-text text-[10rem] text-blue-600">{currentWord.ipa}</span>
+        return <span className="ipa-text text-[10rem] text-blue-600">{currentWord.word_ipa}</span>
     }
     
     if (phase === 2) {
@@ -42,7 +42,7 @@ export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
     return (
         <span className="flex flex-col">
             <span className="ipa-text text-[10rem] text-blue-600 text-center">{currentWord.word}</span>
-            <span className="ipa-text text-[10rem] text-blue-600 ml-2">{currentWord.ipa}</span>
+            <span className="ipa-text text-[10rem] text-blue-600 ml-2">{currentWord.word_ipa}</span>
         </span>
     )
 }

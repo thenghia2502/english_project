@@ -5,9 +5,9 @@ import { LessonWord, Word } from "@/lib/types"
 interface LocalWord extends Word {
     selected: boolean
     done: boolean
-    popularity: number
-    belong: string
-    ipa: string
+    word_popularity?: number
+    belong?: string
+    word_ipa?: string
 }
 
 interface LessonWithWords {

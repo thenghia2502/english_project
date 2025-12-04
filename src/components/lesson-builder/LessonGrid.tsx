@@ -2,14 +2,32 @@
 
 import { Checkbox } from "@/components/ui/checkbox"
 import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form"
-import { FormValues, Unit } from "@/lib/types"
+import { FormValues } from "@/lib/types"
 import { startTransition } from "react"
 import { Control } from "react-hook-form"
 
 export interface LessonGridProps {
   control: Control<FormValues>
-  baiList: Unit[]
-  currentItems: Unit[]
+  baiList: {
+    unit_id: string;
+    unit_name: string;
+    unit_description?: string | undefined;
+    unit_order?: number | undefined;
+    level_id: string;
+    level_name: string;
+    level_code: string;
+    level_description?: string | undefined;
+}[]
+  currentItems: {
+    unit_id: string;
+    unit_name: string;
+    unit_description?: string | undefined;
+    unit_order?: number | undefined;
+    level_id: string;
+    level_name: string;
+    level_code: string;
+    level_description?: string | undefined;
+}[]
   originalSelectedRef: { current: string[] }
   isEditMode: boolean
   onItemChange: () => void
@@ -24,16 +42,16 @@ export default function LessonGrid({
     <div className="grid grid-cols-4 grid-rows-6 gap-3">
       {currentItems.map((bai) => (
         <FormField
-          key={bai.id}
+          key={bai.unit_id}
           control={control}
           name="listSelectedUnit"
           render={({ field }) => {
             const value: string[] = Array.isArray(field.value) ? field.value : []
-            const isChecked = value.includes(bai.id)
+            const isChecked = value.includes(bai.unit_id)
 
             const handleChange = (checked: boolean) => {
               // Prevent unnecessary updates if value is the same
-              const currentlyChecked = value.includes(bai.id)
+              const currentlyChecked = value.includes(bai.unit_id)
               if (checked === currentlyChecked) {
                 return
               }
@@ -41,8 +59,8 @@ export default function LessonGrid({
               // Use startTransition to mark as non-urgent update
               startTransition(() => {
                 const newValue = checked
-                  ? [...value, bai.id]
-                  : value.filter((v) => v !== bai.id)
+                  ? [...value, bai.unit_id]
+                  : value.filter((v) => v !== bai.unit_id)
 
                 field.onChange(newValue)
                 onItemChange()
@@ -78,7 +96,7 @@ export default function LessonGrid({
                   />
                 </FormControl>
                 <FormLabel className="text-gray-900 flex-1 ml-3 mb-0 text-sm font-medium cursor-pointer">
-                  {bai.name}
+                  {bai.unit_name}
                 </FormLabel>
               </FormItem>
             )

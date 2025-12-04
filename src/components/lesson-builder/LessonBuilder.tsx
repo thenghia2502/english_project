@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import { useCurriculumCustomById, useLessonById } from "@/hooks"
-import { Lesson, LessonWord, Word, Curriculum, Level } from "@/lib/types"
+import { useLessonById } from "@/hooks"
+import { Lesson, LessonWord, Word, Curriculum, Level, Unit } from "@/lib/types"
 import Loading from "@/components/ui/loading"
 
 // Components
@@ -15,7 +15,7 @@ import LessonHeader from "@/components/lesson-builder/LessonHeader"
 import EmptyLessonState from "@/components/lesson-builder/EmptyLessonState"
 import LessonWordsTable from "@/components/lesson-builder/LessonWordsTable"
 import { useLessonBuilderLogic } from "@/components/lesson-builder/useLessonBuilderLogic"
-import { LocalWord, LessonWithWords } from "@/components/lesson-builder/types"
+import { LocalWord } from "@/components/lesson-builder/types"
 import Modal from "./Modal"
 
 export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update', id?: string }) {
@@ -26,235 +26,226 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
     // State management
     const isEditMode = mode === 'update'
-    const [actualCCId, setActualCCId] = useState<string>('')
-    // const [mounted, setMounted] = useState(false)
+    const [units, setUnits] = useState<Unit[]>([]) // Units từ API cho cả create và edit mode
     const [data, setData] = useState<{ [key: string]: LocalWord[] }>({})
-    const [lessonsFiltered, setLessonsFiltered] = useState<LessonWithWords[]>([])
     const [lessonWords, setLessonWords] = useState<LessonWord[]>([])
     const [courseName, setCourseName] = useState("")
     const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
+    const [selectedUnitsFromModal, setSelectedUnitsFromModal] = useState<string[]>([])
     const [expandedChildGroups, setExpandedChildGroups] = useState<Set<string>>(new Set())
     const [isModalOpen, setIsModalOpen] = useState(mode === 'create')
+    const [curriculumOriginalId, setCurriculumOriginalId] = useState<string>('')  // NEW
 
-    // React Query hooks - chỉ fetch khi thực sự cần thiết
-    const { data: customCurriculum, isLoading: customCurriculumLoading } = useCurriculumCustomById(
-        // Fetch curriculum custom khi có actualCCId (trong cả create và edit mode)
-        // Create mode: actualCCId được set sau khi Modal tạo thành công
-        // Edit mode: actualCCId được extract từ lesson data
-        actualCCId || ''
-    )
+    // React Query hooks
     const { data: lessonById, isLoading: lessonByIdLoading } = useLessonById(lessonId)
 
-    // Debug logging với thông tin chi tiết hơn về React Query
-    useEffect(() => {
-        console.log('🔍 Debug state:', {
-            mode,
-            isEditMode,
-            curriculumId, // curriculum ORIGINAL ID từ URL
-            actualCCId,   // curriculum CUSTOM ID
-            lessonId,
-            hasCustomCurriculum: !!customCurriculum,
-            hasLessonById: !!lessonById,
-            customCurriculumLoading,
-            lessonByIdLoading,
-            shouldFetchCustomCurriculum: !!actualCCId, // enabled condition for useCurriculumCustomById
-            modalWillRender: !isEditMode,
-            reactQueryState: {
-                customCurriculumEnabled: !!actualCCId, // Updated: fetch khi có actualCCId (cả create và edit mode)
-                lessonByIdEnabled: !!lessonId
-            }
-        })
-
-        // Thêm warning nếu có request không mong muốn
-        if (!actualCCId && customCurriculumLoading) {
-            console.warn('⚠️ customCurriculumLoading = true nhưng actualCCId is empty!')
+    // ===== HELPER: Fetch words from unit_ids =====
+    const fetchAndSetUnits = useCallback(async (unitIds: string[]) => {
+        interface ApiChildWord {
+            word_id: string;
+            word_text?: string;
+            word?: string;
+            word_meaning?: string;
+            word_ipa?: string;
+            word_popularity?: number;
+            lesson_ids?: string[];
+            lesson_names?: string[];
         }
-    }, [mode, isEditMode, curriculumId, actualCCId, lessonId, customCurriculum, lessonById, customCurriculumLoading, lessonByIdLoading])
 
-    // const isLoading = lessonByIdLoading || (actualCCId && customCurriculumLoading)
-
-    // Handle edit mode
-    // useEffect(() => {
-    //     if (mode === 'update') {
-    //         setIsEditMode(true)
-    //     } else {
-    //         setIsEditMode(false)
-    //     }
-    // }, [mode])
-
-    // Extract curriculum_custom_id sớm để load curriculum data
-    useEffect(() => {
-        if (isEditMode && lessonById && !actualCCId) {
-            const ccid = (lessonById as unknown as Record<string, unknown>)['curriculum_custom_id']
-            if (ccid) {
-                console.log('🔄 Setting actualCCId early (update mode):', String(ccid))
-                setActualCCId(String(ccid))
-            }
+        interface ApiWordData {
+            word_id: string;
+            word_text: string;
+            word_meaning?: string;
+            word_ipa?: string;
+            word_popularity?: number;
+            word_parent_id?: string | null;
+            children?: ApiChildWord[];
         }
-        // Trong create mode, KHÔNG set actualCCId từ curriculumId vì đó là curriculum original ID
-        // actualCCId chỉ được set khi Modal tạo thành công curriculum custom
-    }, [isEditMode, lessonById, actualCCId])
 
-    // useEffect(() => {
-    //     setMounted(true)
-    // }, [])
-
-    // Normalize units
-    const normalizedUnits = useMemo(() => {
-        const units = (customCurriculum && Array.isArray((customCurriculum).list_unit)) ? (customCurriculum).list_unit : []
-        return units.map((u) => {
-            const list_word = u.list_word
-            return { ...u, list_word }
-        })
-    }, [customCurriculum])
-
-    // Initialize selectedUnitIds and data
-    useEffect(() => {
-        if (!Array.isArray(normalizedUnits) || normalizedUnits.length === 0) return
-
-        const allIds = normalizedUnits.map((u) => u.id)
-        setSelectedUnitIds(allIds)
-
-        setData((prev) => {
-            if (Object.keys(prev).length > 0) return prev
-            const initialData: { [key: string]: LocalWord[] } = {}
-            normalizedUnits.forEach((u) => {
-                const words: LocalWord[] = (u.list_word || []).map((w: Word) => ({
-                    id: w.id,
-                    word: w.word,
-                    meaning: w.meaning || '',
-                    ipa: w.ipa || '',
-                    selected: false,
-                    done: false,
-                    popularity: (w.popularity as number) || 0,
-                    belong: ''
-                }))
-                initialData[u.id] = words
-            })
-            return initialData
-        })
-    }, [normalizedUnits])
-
-    // Update lessons filtered
-    useEffect(() => {
-        const visibleUnits = normalizedUnits.filter((u) => selectedUnitIds.includes(u.id))
-        const items: LessonWithWords[] = visibleUnits.map((u) => {
-            const words: LocalWord[] = (u.list_word || []).map((w: Word) => ({
-                id: w.id,
-                word: w.word,
-                meaning: w.meaning || '',
-                ipa: w.ipa || '',
-                selected: false,
-                done: false,
-                popularity: (w.popularity as number) || 0,
-                belong: ''
-            }))
-            return { id: u.id, title: u.name || '', words }
-        })
-
-        setLessonsFiltered(items)
-
-        setData((prev) => {
-            if (Object.keys(prev).length > 0) return prev
-            const initialData: { [key: string]: LocalWord[] } = {}
-            visibleUnits.forEach((it) => {
-                initialData[it.id] = it.list_word?.map((w: Word) => ({
-                    id: w.id,
-                    word: w.word,
-                    meaning: w.meaning || '',
-                    ipa: w.ipa || '',
-                    selected: false,
-                    done: false,
-                    popularity: (w.popularity as number) || 0,
-                    belong: ''
-                })) || []
-            })
-            return initialData
-        })
-    }, [normalizedUnits, selectedUnitIds])
-
-    // Prefill edit mode data
-    useEffect(() => {
-        if (!isEditMode || !lessonById || normalizedUnits.length === 0) return
-
-        console.log('🔄 Prefilling edit mode data:', {
-            lessonId,
-            lessonById,
-            normalizedUnitsLength: normalizedUnits.length
-        })
+        interface ApiUnitData {
+            unit_id: string;
+            unit_name: string;
+            unit_words: ApiWordData[];
+        }
 
         try {
-            const lb = lessonById as Lesson
-            const toStr = (v: unknown) => (v === undefined || v === null) ? '' : String(v)
+            const queryString = unitIds.map(id => `unitIds=${encodeURIComponent(String(id))}`).join('&');
+            const response = await fetch(`/api/proxy/words/by_units?${queryString}`);
 
-            setCourseName(toStr((lb as unknown as Record<string, unknown>)['name']))
+            if (!response.ok) throw new Error('Failed to fetch words');
 
-            const incomingWords: LessonWord[] = Array.isArray(lb.words)
-                ? (lb.words as unknown as Record<string, unknown>[]).map((w) => ({
-                    id: toStr(w['id'] ?? w['wordId'] ?? w['word']),
-                    word: toStr(w['word'] ?? w['wordText']),
-                    meaning: toStr(w['meaning'] ?? w['mean']),
-                    ipa: toStr(w['ipa'] ?? w['pronunciation']),
-                    pause_time: toStr(w['pauseTime'] ?? '2'),
-                    maxRead: toStr(w['maxRead'] ?? '6'),
-                    show_ipa: toStr(w['show_ipa'] ?? '3'),
-                    show_word: toStr(w['show_word'] ?? '1'),
-                    show_ipa_and_word: toStr(w['show_ipa_and_word'] ?? '2'),
-                    reads_per_round: toStr(w['reads_per_round'] ?? '6'),
-                    progress: toStr(w['progress'] ?? '0')
-                }))
-                : []
+            const result = await response.json();
+            const wordsData = (result.success && result.data) ? result.data : (Array.isArray(result) ? result : []);
 
-            console.log('📝 Incoming words from lesson:', incomingWords)
-            setLessonWords(incomingWords)
-
-            // actualCCId đã được set ở useEffect trên rồi
-
-            // Wait for the next tick to ensure normalizedUnits is ready
-            setTimeout(() => {
-                const selectedIds = new Set(incomingWords.map((w) => w.id))
-                console.log('✅ Selected word IDs:', Array.from(selectedIds))
-
-                setLessonsFiltered((prev) => prev.map((lesson) => ({
-                    ...lesson,
-                    words: lesson.words.map((lw) => ({ ...lw, selected: selectedIds.has(lw.id) }))
-                })))
-
-                setData((prev) => {
-                    const out: typeof prev = {}
-                    for (const key of Object.keys(prev)) {
-                        out[key] = prev[key].map((lw) => ({ ...lw, selected: selectedIds.has(lw.id) }))
-                    }
-                    return out
-                })
-
-                console.log('🎯 Edit mode data prefilled successfully')
-            }, 100)
-        } catch (err) {
-            console.error('❌ Failed to prefill edit data for lesson:', err)
-        }
-    }, [isEditMode, lessonById, normalizedUnits, lessonId])
-
-    // Keep selections in sync - only update when not in edit mode or when normalizedUnits change
-    useEffect(() => {
-        // Skip this effect if we're in edit mode and lessonWords are already loaded
-        if (isEditMode && lessonWords.length > 0) return
-
-        const selectedIds = new Set(lessonWords.map((w) => w.id))
-
-        setLessonsFiltered((prev) => prev.map((lesson) => ({
-            ...lesson,
-            words: lesson.words.map((lw) => ({ ...lw, selected: selectedIds.has(lw.id) }))
-        })))
-
-        setData((prev) => {
-            const out: typeof prev = {}
-            for (const key of Object.keys(prev)) {
-                out[key] = prev[key].map((lw) => ({ ...lw, selected: selectedIds.has(lw.id) }))
+            if (!Array.isArray(wordsData) || wordsData.length === 0) {
+                throw new Error('No words data returned from API');
             }
-            return out
-        })
-    }, [lessonWords, normalizedUnits, isEditMode])
+
+            // Transform API data (preserve children for UI, flatten children into data for selection)
+            const transformedUnits: Unit[] = []
+            const initialData: { [key: string]: LocalWord[] } = {}
+
+            wordsData.forEach((unitData: ApiUnitData) => {
+                // Roots for UI (unit.words contains only roots)
+                const roots: Word[] = (unitData.unit_words || []).map((w: ApiWordData): Word => ({
+                    word_id: w.word_id,
+                    word: (w as unknown as { word?: string }).word ?? w.word_text,
+                    word_meaning: w.word_meaning || '-',
+                    word_ipa: w.word_ipa,
+                    word_popularity: w.word_popularity || 0,
+                    word_parent_id: undefined,
+                    children: Array.isArray(w.children) ? w.children.map((c: ApiChildWord): Word => ({
+                        word_id: c.word_id,
+                        word: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
+                        word_meaning: c.word_meaning ?? '-',
+                        word_ipa: c.word_ipa ?? '-',
+                        word_popularity: c.word_popularity ?? 0,
+                        word_parent_id: undefined
+                    })) : []
+                }))
+
+                transformedUnits.push({
+                        unit_id: unitData.unit_id,
+                        unit_name: unitData.unit_name,
+                        words: roots
+                    })
+
+                // Flatten roots + children into data for selection state
+                const list: LocalWord[] = []
+                ; (unitData.unit_words || []).forEach((w: ApiWordData) => {
+                        list.push({
+                            word_id: w.word_id,
+                            word: (w as unknown as { word?: string }).word ?? w.word_text,
+                            word_meaning: w.word_meaning || '-',
+                            word_ipa: w.word_ipa || '-',
+                            word_popularity: w.word_popularity || 0,
+                            word_parent_id: undefined,
+                            selected: false,
+                            done: false,
+                            belong: ''
+                        })
+
+                        if (Array.isArray(w.children) && w.children.length > 0) {
+                            w.children.forEach((c: ApiChildWord) => {
+                                list.push({
+                                    word_id: c.word_id,
+                                    word: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
+                                    word_meaning: c.word_meaning ?? '-',
+                                    word_ipa: c.word_ipa ?? '-',
+                                    word_popularity: c.word_popularity ?? 0,
+                                    word_parent_id: w.word_id,
+                                    selected: false,
+                                    done: false,
+                                    belong: ''
+                                })
+                            })
+                        }
+                    })
+
+                initialData[unitData.unit_id] = list
+            })
+
+            setUnits(transformedUnits)
+            setSelectedUnitIds(unitIds)
+            setData(initialData)
+        } catch (error) {
+            console.error('❌ Error fetching words:', error);
+            alert('Lỗi khi tải dữ liệu từ vựng. Vui lòng thử lại.');
+        }
+    }, [])
+
+    // ===== HELPER: Load edit mode data =====
+    const loadEditModeData = useCallback(async () => {
+        try {
+            const lb = lessonById as Lesson;
+            const unitIdsFromLesson = (lb as unknown as Record<string, unknown>)['unit_ids'];
+
+            if (!Array.isArray(unitIdsFromLesson) || unitIdsFromLesson.length === 0) {
+                console.warn('⚠️ No unit_ids found in lesson');
+                return;
+            }
+
+            setSelectedUnitsFromModal(unitIdsFromLesson.map(String));
+            await fetchAndSetUnits(unitIdsFromLesson.map(String));
+
+            // Set course name
+            const toStr = (v: unknown) => (v === undefined || v === null) ? '' : String(v);
+            const lessonName = toStr((lb as unknown as Record<string, unknown>)['lesson_name']);
+            const curriculum = (lb as unknown as Record<string, unknown>)['curriculum'] as Record<string, unknown>;
+
+            if (curriculum && curriculum.curriculum_name) {
+                setCourseName(`${lessonName}`);
+            } else {
+                setCourseName(lessonName);
+            }
+
+            // Set lesson words
+            const incomingWords: LessonWord[] = Array.isArray(lb.lesson_words)
+                ? (lb.lesson_words as unknown as Record<string, unknown>[]).map((w) => ({
+                    word_id: toStr(w['word_id']),
+                    word: toStr(w['word']),
+                    word_meaning: toStr(w['word_meaning']),
+                    word_ipa: toStr(w['word_ipa']),
+                    word_pause_time: toStr(w['word_pause_time'] ?? '1.5'),
+                    word_max_read: toStr(w['word_max_read'] ?? '6'),
+                    word_show_ipa: toStr(w['word_show_ipa'] ?? '3'),
+                    word_show_word: toStr(w['word_show_word'] ?? '1'),
+                    word_show_ipa_and_word: toStr(w['word_show_ipa_and_word'] ?? '2'),
+                    word_reads_per_round: toStr(w['word_reads_per_round'] ?? '6'),
+                    word_progress: toStr(w['word_progress'] ?? '0'),
+                    word_parent_id: toStr(w['word_parent_id'] ?? ''),
+                    word_popularity: Number(w['word_popularity'] ?? 0),
+                }))
+                : [];
+
+            setLessonWords(incomingWords);
+
+            // Mark selected words
+            setTimeout(() => {
+                const selectedIds = new Set(incomingWords.map((w) => w.word_id));
+                setData((prev) => {
+                    const out: typeof prev = {};
+                    for (const key of Object.keys(prev)) {
+                        out[key] = prev[key].map((lw) => ({ ...lw, selected: selectedIds.has(lw.word_id) }));
+                    }
+                    return out;
+                });
+            }, 100);
+        } catch (error) {
+            console.error('❌ Error loading edit mode data:', error);
+            alert('Lỗi khi tải dữ liệu bài học. Vui lòng thử lại.');
+        }
+    }, [lessonById, fetchAndSetUnits]);
+
+    // Create mode: nhận curriculum_id từ Modal
+    const handleModalSuccess = async (modalData: {
+        selectedUnits: string[]
+        curriculum: Curriculum
+        level: Level | undefined
+    }) => {
+        const ccId =
+            (modalData.curriculum as unknown as Record<string, unknown>)['curriculum_id'] ??
+            (modalData.curriculum as unknown as Record<string, unknown>)['id'] ??
+            ''
+        setCurriculumOriginalId(String(ccId))                             // NEW
+        if (!modalData.selectedUnits || modalData.selectedUnits.length === 0) {
+            alert('Không có unit nào được chọn')
+            return
+        }
+
+        setSelectedUnitsFromModal(modalData.selectedUnits)
+        await fetchAndSetUnits(modalData.selectedUnits)
+    }
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false)
+    }
+
+    // ===== EDIT MODE: Call loadEditModeData when in edit mode =====
+    useEffect(() => {
+        if (!isEditMode || !lessonById) return;
+        loadEditModeData();
+    }, [isEditMode, lessonById, loadEditModeData])
 
     // Business logic hook
     const {
@@ -267,16 +258,14 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         handleCreateLesson,
         handleUpdateLesson
     } = useLessonBuilderLogic({
-        lessonsFiltered,
         data,
         lessonWords,
         courseName,
-        actualCCId,
+        selectedUnitsFromModal,
         lessonById,
-        curriculumId,
         setLessonWords,
-        setLessonsFiltered,
-        setData
+        setData,
+        curriculumOriginalId                                 // NEW
     })
 
     // Loading state
@@ -289,41 +278,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     //     )
     // }
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false)
-    }
-// const router = useRouter()
-    const handleOpenModal = () => {
-        // if (mode !== 'create')
-        setIsModalOpen(true)
-        // else router.push('/lesson/create')
-    }
 
-    // Xử lý khi Modal tạo thành công và trả về data
-    const handleModalSuccess = (data: {
-        curriculumCustomId: string,
-        selectedUnits: string[],
-        curriculum: Curriculum,
-        level: Level | undefined
-    }) => {
-        console.log('🎉 Modal tạo thành công với data:', data)
-
-        // Cập nhật actualCCId với curriculum custom vừa tạo
-        console.log('🔄 Setting actualCCId from Modal success:', data.curriculumCustomId)
-        setActualCCId(data.curriculumCustomId)
-
-        // Có thể cập nhật selectedUnitIds nếu cần
-        // if (data.selectedUnits && data.selectedUnits.length > 0) {
-        //     setSelectedUnitIds(data.selectedUnits)
-        // }
-
-        // Cập nhật course name dựa trên curriculum và level đã chọn
-        // const newCourseName = `${data.curriculum?.name || 'Curriculum'} - ${data.level?.name || 'Level'}`
-        // setCourseName(newCourseName)
-
-        console.log('✅ Lesson builder đã nhận được thông tin units đã chọn:', data.selectedUnits)
-        console.log('🔄 Will trigger useCurriculumCustomById with actualCCId:', data.curriculumCustomId)
-    }
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -338,32 +293,32 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             )}
             <TopNavigation
                 isEditMode={isEditMode}
-                onOpenModal={handleOpenModal}
+                onOpenModal={() => setIsModalOpen(true)}
             />
 
             <div className="pt-20 h-screen flex">
                 <div className="w-1/3 bg-gray-100 border-r border-gray-300 overflow-y-auto">
-                    { customCurriculumLoading || lessonByIdLoading ? 
-                    <div className="h-full flex justify-center items-center"><Loading message="Đang tải giáo trình..." /></div> : (
-                        <div className="p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">Chọn từ vựng</h2>
+                    {lessonByIdLoading ?
+                        <div className="h-full flex justify-center items-center"><Loading message="Đang tải dữ liệu..." /></div> : (
+                            <div className="p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-6">Chọn từ vựng</h2>
 
-                            <UnitFilter
-                                units={normalizedUnits}
-                                selectedUnitIds={selectedUnitIds}
-                                setSelectedUnitIds={setSelectedUnitIds}
-                            />
+                                <UnitFilter
+                                    units={units}
+                                    selectedUnitIds={selectedUnitIds}
+                                    setSelectedUnitIds={setSelectedUnitIds}
+                                />
 
-                            <WordSelectionPanel
-                                units={normalizedUnits}
-                                selectedUnitIds={selectedUnitIds}
-                                data={data}
-                                expandedChildGroups={expandedChildGroups}
-                                setData={setData}
-                                setExpandedChildGroups={setExpandedChildGroups}
-                            />
-                        </div>
-                    )}
+                                <WordSelectionPanel
+                                    units={units}
+                                    selectedUnitIds={selectedUnitIds}
+                                    data={data}
+                                    expandedChildGroups={expandedChildGroups}
+                                    setData={setData}
+                                    setExpandedChildGroups={setExpandedChildGroups}
+                                />
+                            </div>
+                        )}
                 </div>
 
                 {/* Middle Panel - Transfer Control */}
@@ -374,31 +329,31 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
                 {/* Right Panel - Lesson Building */}
                 <div className="flex-1 border-l border-gray-300 bg-gray-100 overflow-y-auto">
-                    { lessonByIdLoading ? 
-                    <div className="h-full flex justify-center items-center"><Loading message="Đang tải danh sách từ vựng..." /></div> : (
-                    <div className="p-6">
-                        <LessonHeader
-                            lessonWordsCount={lessonWords.length}
-                            courseName={courseName}
-                            setCourseName={setCourseName}
-                            estimatedTime={calculateEstimatedTime()}
-                            isEditMode={isEditMode}
-                            onSave={isEditMode ? handleUpdateLesson : handleCreateLesson}
-                            canSave={lessonWords.length > 0 && courseName.trim() !== ''}
-                        />
+                    {lessonByIdLoading ?
+                        <div className="h-full flex justify-center items-center"><Loading message="Đang tải danh sách từ vựng..." /></div> : (
+                            <div className="p-6">
+                                <LessonHeader
+                                    lessonWordsCount={lessonWords.length}
+                                    courseName={courseName}
+                                    setCourseName={setCourseName}
+                                    estimatedTime={calculateEstimatedTime()}
+                                    isEditMode={isEditMode}
+                                    onSave={isEditMode ? handleUpdateLesson : handleCreateLesson}
+                                    canSave={lessonWords.length > 0 && courseName.trim() !== ''}
+                                />
 
-                        {lessonWords.length === 0 ? (
-                            <EmptyLessonState />
-                        ) : (
-                            <LessonWordsTable
-                                lessonWords={lessonWords}
-                                setLessonWords={setLessonWords}
-                                updateLessonWord={updateLessonWord}
-                                updateMaxReadsLessonWord={updateMaxReadsLessonWord}
-                                removeLessonWord={removeLessonWord}
-                            />
-                        )}
-                    </div> )}
+                                {lessonWords.length === 0 ? (
+                                    <EmptyLessonState />
+                                ) : (
+                                    <LessonWordsTable
+                                        lessonWords={lessonWords}
+                                        setLessonWords={setLessonWords}
+                                        updateLessonWord={updateLessonWord}
+                                        updateMaxReadsLessonWord={updateMaxReadsLessonWord}
+                                        removeLessonWord={removeLessonWord}
+                                    />
+                                )}
+                            </div>)}
                 </div>
             </div>
         </div>

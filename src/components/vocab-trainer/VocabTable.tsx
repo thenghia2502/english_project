@@ -41,7 +41,7 @@ export default function VocabTable({
                 <TableBody>
                     {vocabularyData.map((item, index) => (
                         <TableRow
-                            key={item.id}
+                            key={item.word_id}
                             className={`hover:bg-gray-100 transition-colors cursor-pointer ${
                                 index === currentIndex ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
                             }`}
@@ -62,14 +62,14 @@ export default function VocabTable({
                                 onClick={() => onWordClick(index)} 
                                 className="text-gray-600 ipa-text text-sm"
                             >
-                                {item.ipa}
+                                {item.word_ipa}
                             </TableCell>
                             <TableCell className="text-gray-600 italic flex items-center space-x-2">
                                 <Input
                                     id="pause-time"
                                     type="number"
-                                    value={item.pause_time}
-                                    onChange={(e) => onUpdateWord(item.id, "pause_time", e.target.value)}
+                                    value={item.word_pause_time}
+                                    onChange={(e) => onUpdateWord(item.word_id, "word_pause_time", e.target.value)}
                                     placeholder="0"
                                     className="w-1/2 text-sm text-center"
                                     min="0"
@@ -88,12 +88,12 @@ export default function VocabTable({
                             >
                                 <span
                                     className={`text-sm font-medium ${
-                                        Number(item.progress || 0) >= Number(item.maxRead || 3)
+                                        Number(item.word_progress || 0) >= Number(item.word_max_read || 3)
                                             ? "text-green-600"
                                             : "text-blue-600"
                                     }`}
                                 >
-                                    {item.progress || 0}/{item.maxRead || 3}
+                                    {item.word_progress || 0}/{item.word_max_read || 3}
                                 </span>
                             </TableCell>
                         </TableRow>

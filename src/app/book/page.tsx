@@ -22,8 +22,8 @@ const booksData: BookLevel[] = [
     description: "Enhance your skills and build confidence in English communication",
     books: [
       {
-        id: "english-vocabulary-in-use",
-        title: "American Family and Friends 3 WB 2nd Edition",
+        id: "english-grammar-in-use",
+        title: "American Family and Friends 3 SB 2nd Edition",
         author: "Michael McCarthy",
         description: "Vocabulary reference and practice for upper-intermediate learners",
         pages: 316,

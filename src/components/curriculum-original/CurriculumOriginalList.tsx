@@ -75,28 +75,28 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
         {isPageLoading ? (
           <div className="col-span-full text-center py-20">Đang tải trang...</div>
         ) : (
-          paginated.map((curriculum: Curriculum) => {
+          paginated.map((curriculum) => {
             return (
-              <div key={curriculum.id} className="">
+              <div key={curriculum.curriculum_id} className="">
                 <Card className="bg-white shadow-sm border border-gray-200 relative">
                   {/* Note: Removed delete button since curriculum_original shouldn't be deletable */}
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold text-black">{curriculum.name}</CardTitle>
+                      <CardTitle className="text-base font-semibold text-black">{curriculum.curriculum_name}</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-gray-600">{curriculum.description || 'Không có mô tả'}</p>
                     <div className="my-2 flex items-center gap-3 text-sm text-gray-600">
                       <span>{curriculum.list_level?.length || 0} trình độ</span>
-                      <span>{curriculum.list_unit?.length || 0} bài học</span>
+                      <span>{curriculum.units?.length || 0} bài học</span>
                     </div>
                     <div className='flex space-x-2'>
                       <Button 
                         className='bg-green-600 hover:bg-green-700 text-white flex-1' 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => routerPush(`/lesson/create?id=${curriculum.id}`)}
+                        onClick={() => routerPush(`/lesson/create?id=${curriculum.curriculum_id}`)}
                       >
                         Tạo bài học
                       </Button>
@@ -104,7 +104,7 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
                         className='bg-blue-600 hover:bg-blue-700 text-white flex-1' 
                         variant="ghost" 
                         size="sm" 
-                        onClick={() => routerPush(`/giaotrinh/view/${curriculum.id}`)}
+                        onClick={() => routerPush(`/giaotrinh/view/${curriculum.curriculum_id}`)}
                       >
                         Xem chi tiết
                       </Button>

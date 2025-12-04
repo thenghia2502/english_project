@@ -1,8 +1,8 @@
-import { Lesson } from '@/lib/types'
+import { Lesson, UpdateLessonPayload } from '@/lib/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 // API functions - map to server endpoints
-const fetchLessonList = async (): Promise<Lesson[]> => {
+const fetchLessonList = async () => {
   const response = await fetch('/api/proxy/lesson')
   if (!response.ok) throw new Error('Failed to fetch lessons')
   return response.json()
@@ -14,7 +14,13 @@ const fetchLessonById = async (id: string): Promise<Lesson> => {
   return response.json()
 }
 
-const createLesson = async (payload: { id: string; name?: string; order?: number; workIds?: string[] }): Promise<Lesson> => {
+const createLesson = async (payload: { name?: string; order?: number; words?: {"word_id": string,
+      "word_max_read": string,
+      "word_show_ipa": string,
+      "word_show_word": string,
+      "word_show_ipa_and_word": string,
+      "word_reads_per_round": string,
+      "word_pause_time": string}[], unit_ids?: string[], curriculum_original_id?: string }): Promise<Lesson> => {
   const response = await fetch('/api/proxy/lesson/create', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -24,9 +30,30 @@ const createLesson = async (payload: { id: string; name?: string; order?: number
   return response.json()
 }
 
-const updateLesson = async (payload: Lesson): Promise<Lesson> => {
-  const response = await fetch('/api/proxy/lesson/update', {
-    method: 'PUT',
+const updateLesson = async (payload: UpdateLessonPayload): Promise<Lesson> => {
+  const response = await fetch('/api/proxy/lesson/update-progress', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) throw new Error('Failed to update lesson')
+  return response.json()
+}
+
+const updateLessonWords = async (payload: {
+  lesson_id: string, words: {
+    word_id: string,
+    word_progress: string,
+    word_max_read: string,
+    word_show_ipa: string,
+    word_show_word: string,
+    word_show_ipa_and_word: string,
+    word_reads_per_round: string,
+    word_pause_time: string
+  }[]
+}): Promise<Lesson> => {
+  const response = await fetch('/api/proxy/lesson/update-words', {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
@@ -83,14 +110,14 @@ export const useCreateLesson = () => {
       // Clear curriculum custom caches (for edit mode)
       queryClient.removeQueries({ queryKey: ['curriculums'] })
       // Force invalidate and refetch all lesson queries
-      await queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({
         queryKey: lessonKeys.all,
-        refetchType: 'all' 
+        refetchType: 'all'
       })
       // Force invalidate curriculum custom queries
-      await queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({
         queryKey: ['curriculums'],
-        refetchType: 'all' 
+        refetchType: 'all'
       })
       // Manually refetch the lessons list
       await queryClient.refetchQueries({ queryKey: lessonKeys.lists() })
@@ -104,21 +131,47 @@ export const useUpdateLesson = () => {
     mutationFn: updateLesson,
     onSuccess: async (data) => {
       // Debug log để track khi nào được gọi
-      console.log('🔄 useUpdateLesson onSuccess called with:', data.id)
-      
+      // console.log('🔄 useUpdateLesson onSuccess called with:', data.lesson_id)
+
       // Cập nhật cache local cho lesson detail
-      queryClient.setQueryData(lessonKeys.detail(data.id), data)
-      
+      queryClient.setQueryData(lessonKeys.detail(data.lesson_id), data)
+
       // Throttle invalidation để tránh multiple calls
       await new Promise(resolve => setTimeout(resolve, 100))
-      
+
       // Invalidate lessons list một cách controlled
-      await queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({
         queryKey: lessonKeys.lists(),
         exact: true,
         refetchType: 'active'
       })
-      
+
+      console.log('✅ useUpdateLesson invalidation completed')
+    },
+  })
+}
+
+export const useUpdateLessonWords = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateLessonWords,
+    onSuccess: async (data) => {
+      // Debug log để track khi nào được gọi
+      // console.log('🔄 useUpdateLesson onSuccess called with:', data.lesson_id)
+
+      // Cập nhật cache local cho lesson detail
+      queryClient.setQueryData(lessonKeys.detail(data.lesson_id), data)
+
+      // Throttle invalidation để tránh multiple calls
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Invalidate lessons list một cách controlled
+      await queryClient.invalidateQueries({
+        queryKey: lessonKeys.lists(),
+        exact: true,
+        refetchType: 'active'
+      })
+
       console.log('✅ useUpdateLesson invalidation completed')
     },
   })
@@ -134,14 +187,14 @@ export const useDeleteLesson = () => {
       // Clear curriculum custom caches (for edit mode)
       queryClient.removeQueries({ queryKey: ['curriculums'] })
       // Force invalidate and refetch all lesson queries
-      await queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({
         queryKey: lessonKeys.all,
-        refetchType: 'all' 
+        refetchType: 'all'
       })
       // Force invalidate curriculum custom queries
-      await queryClient.invalidateQueries({ 
+      await queryClient.invalidateQueries({
         queryKey: ['curriculums'],
-        refetchType: 'all' 
+        refetchType: 'all'
       })
       // Manually refetch the lessons list
       await queryClient.refetchQueries({ queryKey: lessonKeys.lists() })

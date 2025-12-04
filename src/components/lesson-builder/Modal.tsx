@@ -1,4 +1,3 @@
-import { useCreateCurriculumCustom } from "@/hooks/use-curriculum";
 import { useCurriculumConditional } from "@/hooks/use-curriculum-conditional";
 import { CurriculumSelector, LessonSelectionSection, LevelSelector, SubmitButton } from "./index";
 import { useForm, FormProvider } from "react-hook-form";
@@ -17,7 +16,6 @@ export default function Modal({
     isOpen: boolean, 
     onClose: () => void,
     onSuccess?: (data: {
-        curriculumCustomId: string,
         selectedUnits: string[],
         curriculum: Curriculum,
         level: Level | undefined
@@ -42,8 +40,8 @@ export default function Modal({
     });
 
     // Data for form
-    const levels = selectedCurriculum?.list_level || [];
-    const baiList = selectedCurriculum?.list_unit || [];
+    const levels = selectedCurriculum?.levels || [];
+    const baiList = selectedCurriculum?.units || [];
     const isEditMode = false;
 
     // Initialize default selections when curriculum data loads
@@ -52,10 +50,10 @@ export default function Modal({
             setSelectedCurriculum(curriculum);
             form.setValue("curriculum", curriculum.id);
 
-            if (curriculum.list_level && curriculum.list_level.length > 0) {
-                const defaultLevel = curriculum.list_level[0];
+            if (curriculum.levels && curriculum.levels.length > 0) {
+                const defaultLevel = curriculum.levels[0];
                 setSelectedLevel(defaultLevel);
-                form.setValue("levelId", defaultLevel.id);
+                form.setValue("levelId", defaultLevel.level_id);
             }
         }
     }, [curriculum, selectedCurriculum, form]);
@@ -96,17 +94,17 @@ export default function Modal({
                 setSelectedLevel(undefined);
                 form.setValue("levelId", "");
                 // Auto-select first level if available
-                if (curriculum.list_level && curriculum.list_level.length > 0) {
-                    const firstLevel = curriculum.list_level[0];
+                if (curriculum.levels && curriculum.levels.length > 0) {
+                    const firstLevel = curriculum.levels[0];
                     setSelectedLevel(firstLevel);
-                    form.setValue("levelId", firstLevel.id);
+                    form.setValue("levelId", firstLevel.level_id);
                 }
             }
         }
     };
 
     const handleLevelChange = (levelId: string) => {
-        const level = levels.find(l => l.id === levelId);
+        const level = levels.find((l: Level) => l.level_id === levelId);
         if (level) {
             setSelectedLevel(level);
             form.setValue("levelId", levelId);
@@ -120,37 +118,32 @@ export default function Modal({
     const handleItemChange = () => {
         // Item change logic here
     };
-    const createLessonMutation = useCreateCurriculumCustom();
-    const onSubmit = async (data: FormValues) => {
+
+    const onSubmit = async () => {
         setIsSubmitting(true);
         try {
-            const newData = {
-                "name": `${selectedCurriculum?.name || 'Curriculum'} - ${selectedLevel?.name || 'Level'}`,
-                "curriculum_original_id": form.getValues("curriculum"),
-                "description": `Giáo trình tùy chỉnh từ ${selectedCurriculum?.name}`,
-                "level_id": form.getValues("levelId"),
-                "list_unit": form.getValues("listSelectedUnit")
-            }
-            // Handle form submission here
-            console.log("Form data:", data);
-            // Add your submission logic
-            const result = await createLessonMutation.mutateAsync(newData)
+            const selectedUnits = form.getValues("listSelectedUnit");
             
-            // Gọi callback với data đã chọn khi tạo thành công
+            if (!selectedUnits || selectedUnits.length === 0) {
+                alert('Vui lòng chọn ít nhất một unit');
+                return;
+            }
+
+            console.log("Selected units:", selectedUnits);
+            
+            // Gọi callback với unitIds đã chọn
             if (onSuccess) {
                 onSuccess({
-                    curriculumCustomId: result.id, // ID của curriculum custom vừa tạo
-                    selectedUnits: form.getValues("listSelectedUnit"),
+                    selectedUnits,
                     curriculum: selectedCurriculum!,
                     level: selectedLevel
                 });
             }
             
-            // Chỉ đóng modal khi tạo thành công
+            // Đóng modal
             onClose();
         } catch (error) {
             console.error("Error submitting form:", error);
-            // Không đóng modal khi có lỗi, để user có thể thử lại
         } finally {
             setIsSubmitting(false);
         }
@@ -214,7 +207,7 @@ export default function Modal({
                                 {isSubmitting && (
                                     <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-50 rounded-lg">
                                         <Loading 
-                                            message="Đang tạo giáo trình..."
+                                            message="Đang xử lý..."
                                             variant="default"
                                         />
                                     </div>

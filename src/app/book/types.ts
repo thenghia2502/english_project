@@ -26,4 +26,5 @@ export interface BookNote {
   unitId: string
   content: string
   timestamp: Date
+  title?: string
 }

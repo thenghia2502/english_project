@@ -1,30 +1,25 @@
-# Documentation - Quản lý Giáo trình
+# Tài liệu hệ thống – Trang Quản Lý Giáo Trình
 
-## Tổng quan
-File `quanlygiaotrinh/page.tsx` là trang quản lý giáo trình với các tính năng:
-- Hiển thị danh sách giáo trình gốc dạng carousel (1 hàng)
-- Hiển thị danh sách bài học được nhóm theo giáo trình dạng carousel (2 hàng)
-- Tính năng xóa giáo trình và danh sách bài học
-- Navigation carousel với nút Previous/Next và dots indicator
+Tài liệu mô tả cấu trúc, dữ liệu và luồng hoạt động của trang quản lý giáo trình (`quanlygiaotrinh/page.tsx`). Mục tiêu là giúp nắm nhanh cách tổ chức UI, state, API và các edge cases để bảo trì và mở rộng.
 
-## Interfaces
+## 1) Tổng quan
+- Hiển thị danh sách giáo trình gốc (carousel 1 hàng, 3 item/trang)
+- Hiển thị danh sách bài học được nhóm theo giáo trình (carousel 2 hàng, 3 cột → 6 item/trang)
+- Xóa giáo trình/bài học (với xác nhận)
+- Điều hướng bằng nút Previous/Next và dot indicators
 
-### Level
-```typescript
+## 2) Mô hình dữ liệu (UI)
+
+Các interface rút gọn dùng cho UI (có thể khác với dữ liệu thực tế từ API/DB):
+
+```ts
 interface Level {
     id: string
     name: string
     description?: string
-    units?: Array<{
-        id: string
-        name: string
-        content?: string
-    }>
+    units?: Array<{ id: string; name: string; content?: string }>
 }
-```
 
-### Curriculum
-```typescript
 interface Curriculum {
     id: string
     title: string
@@ -32,10 +27,7 @@ interface Curriculum {
     levels?: Level[]
     createdAt?: string
 }
-```
 
-### LessonList
-```typescript
 interface LessonList {
     id: string
     name: string
@@ -45,192 +37,217 @@ interface LessonList {
 }
 ```
 
-## State Variables
+Lưu ý: Ở layer domain có thể có các kiểu đầy đủ hơn (xem `src/lib/types.ts`), nhưng trang này chỉ cần các thuộc tính phục vụ render.
 
-### curriculums
-- **Type**: `Curriculum[]`
-- **Mục đích**: Lưu trữ danh sách tất cả giáo trình với thông tin chi tiết
+## 3) Trạng thái (State)
+- `curriculums: Curriculum[]`: danh sách giáo trình hiển thị ở carousel trên
+- `lessonLists: LessonList[]`: danh sách bài học đã tạo, nhóm theo giáo trình
+- `isLoading: boolean`: cờ tải dữ liệu ban đầu
+- `error: string | null`: thông báo lỗi ngắn gọn (nếu có)
+- `carouselIndices: Record<string, number>`: vị trí hiện tại của carousel bài học theo `curriculumId`
+- `curriculumCarouselIndex: number`: vị trí hiện tại của carousel giáo trình
 
-### lessonLists
-- **Type**: `LessonList[]`
-- **Mục đích**: Lưu trữ danh sách tất cả bài học đã tạo từ các giáo trình
+## 4) Helpers/Selectors
 
-### isLoading
-- **Type**: `boolean`
-- **Mục đích**: Quản lý trạng thái loading khi fetch dữ liệu
+```ts
+// Định dạng dd/mm/yyyy hoặc "Không rõ"
+function formatDate(dateString?: string): string
 
-### error
-- **Type**: `string | null`
-- **Mục đích**: Lưu trữ thông báo lỗi nếu có
+// Tổng số units của một giáo trình
 
-### carouselIndices
-- **Type**: `{[key: string]: number}`
-- **Mục đích**: Lưu trữ index hiện tại của carousel cho từng giáo trình (lesson lists)
+function getTotalUnits(levels?: Levels): number
 
-### curriculumCarouselIndex
-- **Type**: `number`
-- **Mục đích**: Lưu trữ index hiện tại của carousel giáo trình
+// Ước tính số từ = units * 10
+function getTotalWords(levels?: Levels): number
 
-## Utility Functions
+// Lọc lesson list theo curriculum
+function getLessonsBycurriculum(curriculumId: string): LessonList[]
 
-### formatDate(dateString?: string)
-**Mục đích**: Định dạng chuỗi ngày tháng thành định dạng tiếng Việt
-**Tham số**: 
-- `dateString`: Chuỗi ngày tháng ISO
-**Trả về**: Chuỗi ngày tháng định dạng dd/mm/yyyy hoặc "Không rõ"
-**Ví dụ**: 
-```typescript
-formatDate("2024-01-15T10:30:00Z") // "15/01/2024"
-formatDate(undefined) // "Không rõ"
+// Tìm tên level trong curriculum
+function getLevelName(curriculumId: string, levelId: string): string
 ```
 
-### getTotalUnits(levels?: Level[])
-**Mục đích**: Tính tổng số units (bài học) trong tất cả levels của một giáo trình
-**Tham số**: 
-- `levels`: Mảng các level của giáo trình
-**Trả về**: Tổng số units
-**Logic**: Duyệt qua tất cả levels và cộng số lượng units trong mỗi level
+## 5) UI & Điều hướng
 
-### getTotalWords(levels?: Level[])
-**Mục đích**: Ước tính tổng số từ vựng trong giáo trình
-**Tham số**: 
-- `levels`: Mảng các level của giáo trình
-**Trả về**: Số từ ước tính (10 từ mỗi unit)
-**Logic**: Lấy tổng số units nhân với 10
+### Curriculum Carousel (trên)
+- Bố cục: 1 hàng x 3 cột
+- Điều hướng: Previous/Next (ẩn ở đầu/cuối), dot indicators
+- `itemsPerPage = 3` → tính chỉ số dựa trên tổng curriculums
 
-### getLessonsBycurriculum(curriculumId: string)
-**Mục đích**: Lọc danh sách bài học theo curriculum ID
-**Tham số**: 
-- `curriculumId`: ID của giáo trình
-**Trả về**: Mảng các danh sách bài học thuộc về giáo trình đó
-**Logic**: Filter lessonLists theo id_curriculum
+### Lesson Lists Carousel (dưới, theo curriculum)
+- Bố cục: 2 hàng x 3 cột → 6 item/trang
+- Điều hướng: Previous/Next (ẩn ở đầu/cuối), dot indicators
+- `carouselIndices[curriculumId]` lưu offset mục tiêu (bội số của 6)
 
-### getLevelName(curriculumId: string, levelId: string)
-**Mục đích**: Lấy tên level dựa trên curriculum ID và level ID
-**Tham số**: 
-- `curriculumId`: ID của giáo trình
-- `levelId`: ID của level
-**Trả về**: Tên của level hoặc "Không rõ trình độ"
-**Logic**: Tìm curriculum theo ID, sau đó tìm level trong curriculum đó
+### Hàm điều hướng tiêu biểu
+```ts
+function getCarouselIndex(curriculumId: string): number
+function setCarouselIndex(curriculumId: string, index: number): void
 
-## CRUD Operations
+// next cho lesson list
+function nextSlide(curriculumId: string, totalItems: number): void
 
-### deleteCurriculum(curriculumId: string)
-**Mục đích**: Xóa một giáo trình khỏi danh sách
-**Tham số**: 
-- `curriculumId`: ID của giáo trình cần xóa
-**Logic**: 
-1. Hiển thị confirm dialog
-2. Filter curriculums để loại bỏ curriculum có ID tương ứng
-3. Cập nhật state curriculums
-**TODO**: Cần implement API delete thực tế
+// prev cho lesson list
+function prevSlide(curriculumId: string): void
 
-### deleteLessonList(lessonId: string)
-**Mục đích**: Xóa một danh sách bài học thông qua API
-**Tham số**: 
-- `lessonId`: ID của danh sách bài học cần xóa
-**Logic**: 
-1. Hiển thị confirm dialog
-2. Gọi API DELETE `/api/danhsachtu?id=${lessonId}`
-3. Nếu thành công, cập nhật state lessonLists
+// next cho curriculum
+function nextCurriculumSlide(): void
+// prev cho curriculum
+function prevCurriculumSlide(): void
+```
 
-## Carousel Functions - Lesson Lists
+## 6) Tích hợp API
 
-### getCarouselIndex(curriculumId: string)
-**Mục đích**: Lấy index hiện tại của carousel cho một curriculum cụ thể
-**Tham số**: 
-- `curriculumId`: ID của giáo trình
-**Trả về**: Index hiện tại hoặc 0 nếu chưa có
-**Logic**: Truy cập object carouselIndices với key là curriculumId
+Các endpoint minh họa (đặt tên theo layer Next.js proxy), kiểm tra route thực tế trong `src/app/api` hoặc `server/index.js`:
 
-### setCarouselIndex(curriculumId: string, index: number)
-**Mục đích**: Cập nhật index carousel cho một curriculum cụ thể
-**Tham số**: 
-- `curriculumId`: ID của giáo trình
-- `index`: Index mới cần set
-**Logic**: Cập nhật carouselIndices object với key-value mới
+- Lấy danh sách giáo trình cơ bản: `GET /api/curriculum`
+- Lấy chi tiết một giáo trình: `GET /api/curriculum/[id]`
+- Lấy danh sách bài học: `GET /api/danhsachtu`
+- Xóa bài học: `DELETE /api/danhsachtu?id=<lessonId>`
 
-### nextSlide(curriculumId: string, totalItems: number)
-**Mục đích**: Chuyển đến trang tiếp theo của carousel lesson list
-**Hiển thị**: Mỗi trang 6 items (2 hàng x 3 cột)
-**Tham số**: 
-- `curriculumId`: ID của giáo trình
+Mẫu xoá bài học:
+```ts
+async function deleteLessonList(lessonId: string) {
+    if (!confirm('Bạn chắc chắn muốn xóa danh sách này?')) return
+    const res = await fetch(`/api/danhsachtu?id=${lessonId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Xóa thất bại')
+    // Cập nhật state lessonLists tại UI sau khi xóa
+}
+```
+
+## 7) Luồng hoạt động
+
+### Tải dữ liệu ban đầu
+1. Gọi song song danh sách curriculums và lesson lists
+2. Với mỗi curriculum cần chi tiết → gọi tiếp `/api/curriculum/[id]` (nếu cần)
+3. Chuẩn hóa dữ liệu về model UI
+4. Set `curriculums`, `lessonLists`, tắt `isLoading`
+5. Nếu lỗi: set `error` và hiển thị fallback phù hợp
+
+### Xoá
+1. Hiện confirm
+2. Gọi API `DELETE`
+3. Nếu thành công: cập nhật state tương ứng (lọc bỏ item)
+4. Nếu thất bại: hiển thị lỗi và không đổi state
+
+## 8) Edge cases & Xử lý lỗi
+- Không có curriculum/lesson list: hiển thị empty state thân thiện
+- Lỗi API: hiển thị message ngắn + nút thử lại (nếu phù hợp)
+- Dữ liệu thiếu trường: dùng giá trị mặc định (ví dụ ngày tạo, mô tả)
+- Carousel khi số item < itemsPerPage: ẩn nút điều hướng/dots
+
+## 9) Responsive
+- Mobile: 1 cột
+- Tablet: 2 cột
+- Desktop: 3 cột
+- Sử dụng Tailwind breakpoints để linh hoạt layout
+
+## 10) Ghi chú bảo trì
+- Giữ model UI tách biệt với model domain (nếu API thay đổi)
+- Đặt helper chuẩn hóa dữ liệu riêng (mapping từ API → UI)
+- Bao bọc API calls bằng try/catch và phân loại lỗi (network, validate)
+- Tối ưu re-render carousel bằng memo hóa danh sách và chỉ số
+
+## 11) Checklist kiểm thử nhanh
+- [ ] Tải dữ liệu ban đầu thành công và hiển thị đúng
+- [ ] Carousel curriculum: nút/dots hoạt động, ẩn đúng lúc
+- [ ] Carousel lesson lists: phân trang 6 item, điều hướng đúng
+- [ ] Xoá bài học: confirm → xóa → cập nhật UI
+- [ ] Empty/error states hiển thị hợp lý
+- [ ] Responsive tốt ở 3 breakpoint chính
 - `totalItems`: Tổng số items trong danh sách
-**Logic**: 
-1. Tính currentPage từ index hiện tại (chia 6)
-2. Tính totalPages từ totalItems
-3. Tính nextPage (không vượt quá totalPages - 1)
-4. Set index mới = nextPage * 6
 
-### prevSlide(curriculumId: string)
-**Mục đích**: Chuyển đến trang trước đó của carousel lesson list
-**Tham số**: 
-- `curriculumId`: ID của giáo trình
-**Logic**: 
-1. Tính currentPage từ index hiện tại
-2. Tính prevPage (không nhỏ hơn 0)
-3. Set index mới = prevPage * 6
+## Sơ đồ kiến trúc
 
-## Carousel Functions - Curriculum List
+### 1) Kiến trúc thành phần (Lesson Builder)
 
-### nextCurriculumSlide()
-**Mục đích**: Chuyển đến trang tiếp theo của carousel curriculum
-**Hiển thị**: Mỗi trang 3 items (1 hàng x 3 cột)
-**Logic**: 
-1. itemsPerPage = 3
-2. Tính maxIndex = curriculums.length - itemsPerPage
-3. Tính nextIndex (không vượt quá maxIndex)
-4. Cập nhật curriculumCarouselIndex
+```mermaid
+flowchart LR
+  subgraph UI [Next.js Client]
+    LB[LessonBuilder.tsx]
+    WSP[WordSelectionPanel.tsx]
+    SWP[SelectedWordsPanel.tsx]
+    LBL[useLessonBuilderLogic.ts]
+  end
 
-### prevCurriculumSlide()
-**Mục đích**: Chuyển đến trang trước đó của carousel curriculum
-**Logic**: 
-1. itemsPerPage = 3
-2. Tính prevIndex (không nhỏ hơn 0)
-3. Cập nhật curriculumCarouselIndex
+  subgraph State [Client State]
+    ST1[data: Record<unit_id, LocalWord[]>]
+    ST2[lessonWords: LessonWord[]]
+    ST3[units: Unit[]]
+    ST4[selectedUnitIds: string[]]
+    ST5[courseName: string]
+  end
 
-## Data Fetching
+  subgraph API [Next.js API proxy]
+    API1[/GET /api/proxy/words/by_units/]
+    API2[/POST /api/proxy/lesson/update/]
+    API3[/GET /api/proxy/lesson/by_id/]
+  end
 
-### useEffect - Initial Data Load
-**Mục đích**: Load dữ liệu ban đầu từ API
-**APIs sử dụng**: 
-- `/api/curriculum` - Danh sách curriculum cơ bản
-- `/api/curriculum/[id]` - Chi tiết từng curriculum
-- `/api/danhsachtu` - Danh sách lesson lists
+  LB --> LBL
+  LB --> WSP
+  LB --> SWP
 
-**Logic**: 
-1. Fetch parallel curriculum list và lesson lists
-2. Validate data structure
-3. Loop qua từng curriculum để fetch chi tiết
-4. Xử lý error cho từng curriculum riêng biệt
-5. Cập nhật state curriculums và lessonLists
+  LBL <--> ST1
+  LBL <--> ST2
+  LB  <--> ST3
+  LB  <--> ST4
+  LB  <--> ST5
+  WSP <--> ST1
+  SWP <--> ST2
 
-**Error Handling**: 
-- Nếu API call thất bại, trả về basic curriculum data
-- Nếu toàn bộ process thất bại, set error state
+  LBL --> API2
+  LB  --> API1
+  LB  --> API3
+```
 
-## UI Components Structure
+### 2) Luồng Create/Update
 
-### Curriculum Carousel
-- **Layout**: 1 hàng x 3 cột
-- **Navigation**: Previous/Next buttons ẩn khi ở đầu/cuối
-- **Dots**: Indicator cho số trang
-- **Items per page**: 3
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant LB as LessonBuilder.tsx
+  participant LBL as useLessonBuilderLogic
+  participant API as Next.js API proxy
+  participant BE as Backend
 
-### Lesson Lists Carousel (per curriculum)
-- **Layout**: 2 hàng x 3 cột = 6 items per page
-- **Navigation**: Previous/Next buttons ẩn khi ở đầu/cuối
-- **Dots**: Indicator cho số trang
-- **Grouping**: Theo curriculum ID
+  rect rgb(240,248,255)
+  Note over U,BE: Edit mode
+  U->>LB: Mở trang Edit
+  LB->>API: GET /api/proxy/lesson/by_id
+  API->>BE: GET /lesson/:id
+  BE-->>API: lesson { unit_ids, lesson_words, ... }
+  API-->>LB: lessonById
+  LB->>API: GET /api/proxy/words/by_units?unitIds=...
+  API->>BE: GET /units/words
+  BE-->>API: [{unit_id, unit_name, unit_words(+children)}]
+  API-->>LB: words data
+  LB->>LB: map → units + data (flatten roots+children)
+  LB->>LB: mark selected from lesson_words
+  end
 
-### Navigation Logic
-- **Previous button**: Ẩn khi ở trang đầu tiên
-- **Next button**: Ẩn khi ở trang cuối cùng
-- **Dots**: Click để jump đến trang cụ thể
-- **Transform**: Sử dụng CSS translateX để slide
+  rect rgb(240,255,240)
+  Note over U,BE: Create mode
+  U->>LB: Chọn Units trong Modal
+  LB->>API: GET /api/proxy/words/by_units
+  API->>BE: GET /units/words
+  BE-->>API: [{unit_id, unit_name, unit_words(+children)}]
+  API-->>LB: words data
+  LB->>LB: map → units + data
+  end
 
-## Responsive Design
-- **Mobile**: 1 cột
-- **Tablet**: 2 cột
-- **Desktop**: 3 cột
-- **Grid**: Auto-adjust theo breakpoints của Tailwind CSS
+  rect rgb(255,248,240)
+  Note over U,BE: Save (cả Create/Update)
+  U->>LBL: Nhấn Save
+  LBL->>LBL: build payload { lesson_id?, name, unit_ids, words[...] }
+  LBL->>API: POST /api/proxy/lesson/update
+  API->>BE: POST /lesson/update
+  BE-->>API: 200 OK
+  API-->>LBL: success
+  LBL-->>U: router.push("/lesson")
+  end
+```
+
+Gợi ý preview:
+- VS Code: Ctrl+Shift+V để xem Markdown preview. Nếu không thấy diagram, cài “Markdown Preview Mermaid Support”.

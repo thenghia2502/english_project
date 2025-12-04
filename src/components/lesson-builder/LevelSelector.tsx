@@ -3,14 +3,13 @@
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { FormValues } from "@/lib/types"
+import { FormValues, Level } from "@/lib/types"
 import { Control } from "react-hook-form"
-import { LevelShort } from "@/lib/types"
 
 export interface LevelSelectorProps {
   control: Control<FormValues>
-  levels: LevelShort[]
-  selectedLevel: LevelShort | undefined
+  levels: Level[]
+  selectedLevel: Level | undefined
   onLevelChange: (levelId: string) => void
   isEditMode: boolean
 }
@@ -36,7 +35,7 @@ export default function LevelSelector({
                   variant="outline"
                   className="w-full justify-between text-gray-900"
                 >
-                  {selectedLevel?.name || "Chọn trình độ"}
+                  {selectedLevel?.level_code || "Chọn trình độ"}
                 </Button>
               </DropdownMenuTrigger>
 
@@ -56,13 +55,13 @@ export default function LevelSelector({
                 </DropdownMenuItem>
                 {levels.map((level) => (
                   <DropdownMenuItem
-                    key={level.id}
+                    key={level.level_id}
                     onSelect={() => {
-                      field.onChange(level.id)
-                      onLevelChange(level.id)
+                      field.onChange(level.level_id)
+                      onLevelChange(level.level_id)
                     }}
                   >
-                    {level.name}
+                    {level.level_name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

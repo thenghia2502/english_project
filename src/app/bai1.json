@@ -1,0 +1,71 @@
+{
+                    "image": "/exercises/Screenshot 2025-10-20 150528.png",
+                    "grid": { "cellSize": 10 },
+                    "answers": [
+                        {
+                            "pill": { "x": 420, "y": 30, "width": 330, "height": 40, "radius": 25 },
+                            "text": { "x": 1220, "y": 260, "value": "three", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 1000, "y": 20, "width": 40, "height": 200, "radius": 25 },
+                            "text": { "x": 1230, "y": 200, "value": "two", "size" : 36 }
+                        },
+                        {
+                            "pill": { "x": 570, "y": 385, "width": 40, "height": 265, "radius": 25 },
+                            "text": { "x": 1230, "y": 320, "value": "four", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 570, "y": 390, "width": 260, "height": 40, "radius": 25 },
+                            "text": { "x": 1230, "y": 375, "value": "five", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 925, "y": 90, "width": 40, "height": 200, "radius": 25 },
+                            "text": { "x": 1240, "y": 430, "value": "six", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 420, "y": 170, "width": 40, "height": 345, "radius": 25 },
+                            "text": { "x": 1210, "y": 490, "value": "seven", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 710, "y": 25, "width": 330, "height": 40, "radius": 25 },
+                            "text": { "x": 1230, "y": 545, "value": "eight", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 640, "y": 537, "width": 260, "height": 40, "radius": 25 },
+                            "text": { "x": 1230, "y": 600, "value": "nine", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 1005, "y": 310, "width": 40, "height": 270, "radius": 25 },
+                            "text": { "x": 160, "y": 220, "value": "aunt", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 930, "y": 310, "width": 40, "height": 200, "radius": 25 },
+                            "text": { "x": 160, "y": 280, "value": "mom", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 640, "y": 610, "width": 200, "height": 40, "radius": 25 },
+                            "text": { "x": 160, "y": 340, "value": "dad", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 420, "y": 30, "width": 330, "height": 40, "radius": 25 },
+                            "text": { "x": 160, "y": 390, "value": "grandma", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 420, "y": 30, "width": 330, "height": 40, "radius": 25 },
+                            "text": { "x": 160, "y": 440, "value": "brother", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 420, "y": 30, "width": 330, "height": 40, "radius": 25 },
+                            "text": { "x": 160, "y": 500, "value": "sister", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 570, "y": 320, "width": 260, "height": 40, "radius": 25 },
+                            "text": { "x": 160, "y": 550, "value": "grandpa", "size": 36 }
+                        },
+                        {
+                            "pill": { "x": 420, "y": 30, "width": 330, "height": 40, "radius": 25 },
+                            "text": { "x": 160, "y": 610, "value": "cousin", "size": 36 }
+                        }
+                        
+                    ]
+                }

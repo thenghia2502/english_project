@@ -764,7 +764,7 @@ async function resolveWorksPath() {
 app.post('/api/notes/save', async (req, res) => {
     try {
         const payload = req.body || {}
-        const { bookId, unitId, content } = payload
+        const { bookId, unitId, content, title } = payload
 
         if (!bookId) {
             return res.status(400).json({ 
@@ -810,6 +810,7 @@ app.post('/api/notes/save', async (req, res) => {
 
         // Update note for this specific unit
         bookNotes[unitId] = {
+            title,
             content,
             lastUpdated: timestamp
         }
@@ -822,6 +823,7 @@ app.post('/api/notes/save', async (req, res) => {
             data: {
                 bookId,
                 unitId,
+                title,
                 content,
                 lastUpdated: timestamp
             }
@@ -873,6 +875,146 @@ app.get('/api/notes/:bookId', async (req, res) => {
         })
     }
 })
+
+// API endpoint to get words by unit IDs
+app.get('/api/words/by_units', async (req, res) => {
+    try {
+        // Get unitIds from query params (can be multiple: ?unitIds=id1&unitIds=id2)
+        const unitIds = Array.isArray(req.query.unitIds) 
+            ? req.query.unitIds 
+            : (req.query.unitIds ? [req.query.unitIds] : []);
+
+        if (!unitIds || unitIds.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'unitIds parameter is required' 
+            });
+        }
+
+        console.log('📦 Fetching words for units:', unitIds);
+
+        // Load necessary files
+        const unitsFile = path.join(process.cwd(), 'server', 'unit.json');
+        let units = [];
+        try {
+            const uRaw = await fs.readFile(unitsFile, 'utf-8');
+            units = JSON.parse(uRaw);
+        } catch (err) {
+            console.error('Error reading units file:', err);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Error reading units data' 
+            });
+        }
+
+        // Load works (words)
+        let works = [];
+        try {
+            const resolvedWorksPath = await resolveWorksPath();
+            if (resolvedWorksPath) {
+                works = JSON.parse(await fs.readFile(resolvedWorksPath, 'utf-8'));
+            }
+        } catch (err) {
+            console.error('Error reading works file:', err);
+        }
+
+        // Load unit_work mapping
+        let unitWorks = [];
+        try {
+            const serverUnitWork = path.join(process.cwd(), 'server', 'unit_work.json');
+            const fallbackUnitWork = path.join(process.cwd(), 'src', 'lib', 'unit_work.json');
+            const resolvedUnitWork = (await fileExists(serverUnitWork)) ? serverUnitWork : fallbackUnitWork;
+            unitWorks = JSON.parse(await fs.readFile(resolvedUnitWork, 'utf-8'));
+        } catch (err) {
+            console.error('Error reading unit_work file:', err);
+        }
+
+        // Load lesson_work mapping to check if words are already in lessons
+        let lessonWorks = [];
+        let lessons = [];
+        try {
+            const lessonWorkPath = path.join(process.cwd(), 'server', 'lesson_work.json');
+            lessonWorks = JSON.parse(await fs.readFile(lessonWorkPath, 'utf-8'));
+        } catch (err) {
+            console.error('Error reading lesson_work file:', err);
+        }
+        try {
+            const lessonsPath = path.join(process.cwd(), 'server', 'lesson.json');
+            lessons = JSON.parse(await fs.readFile(lessonsPath, 'utf-8'));
+        } catch (err) {
+            console.error('Error reading lessons file:', err);
+        }
+
+        // Get words for each unit
+        const result = unitIds.map((unitId, index) => {
+            const unit = units.find(u => u.id === unitId);
+            if (!unit) {
+                return {
+                    unit_id: unitId,
+                    unit_name: null,
+                    unit_order: index + 1,
+                    unit_words: []
+                };
+            }
+
+            // Find work IDs for this unit
+            const workIds = (unitWorks || [])
+                .filter(uw => uw.unit_id === unitId)
+                .map(uw => uw.work_id);
+
+            // Get words data with lesson information
+            const words = (works || [])
+                .filter(w => workIds.includes(w.id))
+                .map(w => {
+                    // Find all lesson_work records for this word
+                    const relatedLessonWorks = (lessonWorks || []).filter(lw => lw.work_id === w.id);
+                    const lessonIds = [];
+                    const lessonNames = [];
+                    
+                    relatedLessonWorks.forEach(lw => {
+                        if (lw.lesson_id) {
+                            const lesson = (lessons || []).find(ls => ls.id === lw.lesson_id);
+                            if (lesson) {
+                                lessonIds.push(lw.lesson_id);
+                                lessonNames.push(lesson.name);
+                            }
+                        }
+                    });
+
+                    return {
+                        word_id: w.id,
+                        word_text: w.word,
+                        word_meaning: w.meaning || '',
+                        word_ipa: w.ipa || '',
+                        word_popularity: w.popularity || 0,
+                        parent_id: w.parent_id,
+                        lesson_ids: lessonIds,
+                        lesson_names: lessonNames
+                    };
+                });
+
+            return {
+                unit_id: unitId,
+                unit_name: unit.name,
+                unit_order: index + 1,
+                unit_words: words
+            };
+        });
+
+        console.log(`✅ Fetched words for ${unitIds.length} units, total ${result.reduce((acc, r) => acc + r.unit_words.length, 0)} words`);
+
+        return res.status(200).json({ 
+            success: true, 
+            data: result
+        });
+    } catch (err) {
+        console.error('Error fetching words by units:', err);
+        return res.status(500).json({ 
+            success: false, 
+            error: 'Server error while fetching words' 
+        });
+    }
+});
 
 // API endpoint to get note for a specific unit
 app.get('/api/notes/:bookId/:unitId', async (req, res) => {

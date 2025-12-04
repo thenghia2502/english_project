@@ -1,42 +1,76 @@
 export interface Word {
-    id: string
+    word_id: string
     word: string
-    meaning: string
-    ipa: string
-    selected: boolean
-    done: boolean
-    popularity: number
-    belong: string
-    parent_id?: string
+    word_meaning: string
+    word_ipa?: string
+    selected?: boolean
+    done?: boolean
+    word_popularity?: number
+    belong?: string
+    word_parent_id?: string
     lesson_ids?: string[]
     lesson_names?: string[]
+    children?: Word[]
 }
 
 export interface Lesson {
-    id: string
-    name: string
-    words: LessonWord[]
-    created_at: string
-    updated_at: string
-    estimatedTime: string
-    done: string
+    lesson_id: string
+    lesson_name: string
+    lesson_words: LessonWord[]
+    lesson_order: number
+    lesson_created_at: string
+    lesson_updated_at: string
+    estimatedTime?: string
+    lesson_progress: string
+    curriculum: {
+        curriculum_name: string
+    }
     curriculum_custom_id: string
+    units?: {
+        level: {
+            level_id: string
+            level_name: string
+            level_code: string
+        }
+        words: {
+            word_id: string
+            word: string
+            word_meaning: string
+        }[]
+        unit_id: string
+        unit_title: string
+    }[],
+    unit_ids?: string[]
 }
 
 export interface LessonWord {
-    "id": string,
-    "word": string,
-    "meaning": string,
-    "ipa": string,
-    "pause_time": string
-    maxRead: string
-    show_ipa: string
-    show_word: string
-    show_ipa_and_word: string
-    reads_per_round: string
-    progress: string
+    word_id: string,
+    word: string,
+    word_meaning: string,
+    word_ipa?: string,
+    word_pause_time: string
+    word_max_read: string
+    word_show_ipa: string
+    word_show_word: string
+    word_show_ipa_and_word: string
+    word_reads_per_round: string
+    word_progress: string
+    word_popularity: number
+    word_parent_id: string
     example?: string
     audioUrl?: string
+}
+
+export interface UpdateLessonPayload {
+    lesson_id: string
+    lesson_name: string
+    lesson_order?: number
+    unit_ids: string[]
+    words: {
+        word_id: string
+        word_progress: number
+        word_pause_time: number
+    }[]
 }
 export interface CourseWord {
     id: string
@@ -67,20 +101,25 @@ export type FormValues = {
 }
 
 export type Unit = {
-    id: string
-    name: string
-    list_word: Word[]
+    unit_id: string
+    unit_name: string
+    unit_title?: string
+    words: Word[]
 }
 
 export interface Level {
-    id: string
-    name: string
-    description?: string
-    units?: Array<{
-        id: string
-        name: string
-        content?: string
-    }>
+    // id: string
+    // name: string
+    // description?: string
+    // units?: Array<{
+    //     id: string
+    //     name: string
+    //     content?: string
+    // }>
+    level_id: string
+    level_name: string
+    level_code: string
+    level_description?: string
 }
 
 export interface LevelShort {
@@ -96,6 +135,31 @@ export interface Curriculum {
     list_unit?: Unit[]
     created_at?: string
     updated_at?: string
+    levels: {
+        level_id: string
+        level_name: string
+        level_code: string
+        level_description?: string
+    }[]
+    units: {
+        unit_title: string
+        unit_id: string
+        unit_name: string
+        unit_description?: string
+        unit_order?: number
+        level_id: string
+        level_name: string
+        level_code: string
+        level_description?: string
+        words: {
+            word_id: string
+            word: string
+            word_meaning: string
+            word_ipa?: string
+            word_parent_id?: string
+            word_popularity?: number
+        }[]
+    }[]
 }
 
 export interface LessonList {

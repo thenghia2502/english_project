@@ -8,7 +8,7 @@ import { LessonWord } from "@/lib/types"
 import SortableRow from "./SortableRow"
 
 interface LocalWord {
-    id: string
+    word_id: string
     word: string
     ipa: string
 }
@@ -37,8 +37,8 @@ export default function LessonWordsTable({
                     collisionDetection={closestCenter}
                     onDragEnd={({ active, over }) => {
                         if (active.id !== over?.id) {
-                            const oldIndex = lessonWords.findIndex((w) => w.id === active.id)
-                            const newIndex = lessonWords.findIndex((w) => w.id === over?.id)
+                            const oldIndex = lessonWords.findIndex((w) => w.word_id === active.id)
+                            const newIndex = lessonWords.findIndex((w) => w.word_id === over?.id)
                             setLessonWords((words) => arrayMove(words, oldIndex, newIndex))
                         }
                     }}
@@ -69,18 +69,18 @@ export default function LessonWordsTable({
                                 <TableHead className="w-16 py-4 px-4"></TableHead>
                             </TableRow>
                         </TableHeader>
-                        <SortableContext items={lessonWords.map((w) => w.id)} strategy={verticalListSortingStrategy}>
+                        <SortableContext items={lessonWords.map((w) => w.word_id)} strategy={verticalListSortingStrategy}>
                             <TableBody>
                                 {lessonWords.map((cw) => {
                                     const word: LocalWord = {
-                                        id: cw.id,
+                                        word_id: cw.word_id,
                                         word: cw.word,
-                                        ipa: cw.ipa || ''
+                                        ipa: cw.word_ipa || ''
                                     }
 
                                     return (
                                         <SortableRow
-                                            key={word.id}
+                                            key={word.word_id}
                                             word={word}
                                             lessonWord={cw}
                                             updateLessonWord={updateLessonWord}

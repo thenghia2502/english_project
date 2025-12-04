@@ -20,6 +20,7 @@ interface UseAudioManagerProps {
     currentIndex: number
     dialect: string
     isLooping: boolean
+    getAudioUrl: (word: string, dialect: string) => Promise<string>
     setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>
     setIsLooping: React.Dispatch<React.SetStateAction<boolean>>
     setAudioError: React.Dispatch<React.SetStateAction<boolean>>
@@ -33,6 +34,7 @@ export function useAudioManager({
     currentIndex,
     dialect,
     isLooping,
+    getAudioUrl,
     setIsPlaying,
     setIsLooping,
     setAudioError,
@@ -77,8 +79,8 @@ export function useAudioManager({
         setVocabularyData((prev) => {
             const updated = [...prev]
             const current = updated[index]
-            const realProgress = Number(current.progress)
-            const maxReads = Number(current.maxRead)
+            const realProgress = Number(current.word_progress)
+            const maxReads = Number(current.word_max_read)
 
             if (realProgress >= maxReads) {
                 newProgress = realProgress
@@ -88,7 +90,7 @@ export function useAudioManager({
             newProgress = realProgress + 1
             updated[index] = {
                 ...current,
-                progress: newProgress.toString(),
+                word_progress: newProgress.toString(),
             }
 
             return updated
@@ -105,7 +107,7 @@ export function useAudioManager({
 
         for (let i = nextIndex; i < totalWords; i++) {
             const word = vocabularyData[i]
-            if (Number(word.progress) < Number(word.maxRead)) {
+            if (Number(word.word_progress) < Number(word.word_max_read)) {
                 setCurrentIndex(i)
                 if (playingIndexRef.current === null) {
                     playCurrentWordRef.current?.(i)
@@ -116,7 +118,7 @@ export function useAudioManager({
 
         for (let i = 0; i < currentIndex; i++) {
             const word = vocabularyData[i]
-            if (Number(word.progress) < Number(word.maxRead)) {
+            if (Number(word.word_progress) < Number(word.word_max_read)) {
                 setCurrentIndex(i)
                 if (playingIndexRef.current === null) {
                     playCurrentWordRef.current?.(i)
@@ -137,7 +139,7 @@ export function useAudioManager({
             return
         }
 
-        if (Number(current.progress) >= Number(current.maxRead)) {
+        if (Number(current.word_progress) >= Number(current.word_max_read)) {
             if (vocabularyData.length > 0) {
                 setCurrentIndex(Math.min(currentIndex, vocabularyData.length - 1))
             }
@@ -162,7 +164,7 @@ export function useAudioManager({
         const word = vocabularyData[idx]
         if (!word) return
 
-        const readsPerRound = Number(word.reads_per_round)
+        const readsPerRound = Number(word.word_reads_per_round)
         const currentReadsInRound = readsInCurrentRoundRef.current + 1
 
         if (currentReadsInRound >= readsPerRound) {
@@ -173,10 +175,10 @@ export function useAudioManager({
 
         readsInCurrentRoundRef.current = currentReadsInRound
 
-        const maxReads = Number(word.maxRead)
+        const maxReads = Number(word.word_max_read)
         const progress = typeof updatedProgress === 'number'
             ? updatedProgress
-            : Number(word.progress || 0)
+            : Number(word.word_progress || 0)
 
         if (progress < maxReads && !isForceStopRef.current) {
             playCurrentWordRef.current?.(idx, progress)
@@ -201,8 +203,8 @@ export function useAudioManager({
             }
             playingIndexRef.current = indexToPlay
 
-            const progress = typeof knownProgress === 'number' ? knownProgress : Number(wordToPlay.progress)
-            const maxReads = Number(wordToPlay.maxRead)
+            const progress = typeof knownProgress === 'number' ? knownProgress : Number(wordToPlay.word_progress)
+            const maxReads = Number(wordToPlay.word_max_read)
 
             if (progress === maxReads) {
                 await onWordEnded(indexToPlay, progress)
@@ -212,7 +214,24 @@ export function useAudioManager({
 
             setAudioError(false)
 
-            audioRef.current.src = getAudioUrlLocal(wordToPlay.word, dialect) || ""
+            try {
+                // getAudioUrl sẽ tự động kiểm tra cache và refresh nếu cần
+                const audioUrl = await getAudioUrl(wordToPlay.word, dialect)
+                audioRef.current.src = audioUrl
+            } catch (error) {
+                console.error('❌ Error fetching audio URL:', error)
+                // Fallback to local audio
+                const localUrl = getAudioUrlLocal(wordToPlay.word, dialect)
+                if (localUrl) {
+                    audioRef.current.src = localUrl
+                } else {
+                    setAudioError(true)
+                    setIsLooping(false)
+                    playingIndexRef.current = null
+                    return
+                }
+            }
+            
             audioRef.current.currentTime = 0
 
             audioRef.current.oncanplaythrough = async () => {
@@ -224,19 +243,21 @@ export function useAudioManager({
                 } catch {
                     setAudioError(true)
                     setIsLooping(false)
+                    playingIndexRef.current = null
                 }
             }
 
             audioRef.current.onerror = () => {
                 setAudioError(true)
                 setIsLooping(false)
+                playingIndexRef.current = null
             }
 
             audioRef.current.onended = async () => {
                 if (isForceStopRef.current) return
                 setIsPlaying(false)
 
-                const pauseMs = (Number(wordToPlay.pause_time) || 3) * 1000
+                const pauseMs = (Number(wordToPlay.word_pause_time) || 3) * 1000
                 if (pauseMs > 0) {
                     await delay(pauseMs)
                     if (isForceStopRef.current) return
@@ -247,17 +268,7 @@ export function useAudioManager({
                 playingIndexRef.current = null
             }
         },
-        [
-            currentIndex,
-            vocabularyData,
-            dialect,
-            delay,
-            setAudioError,
-            setIsPlaying,
-            setIsLooping,
-            updateProgress,
-            onWordEnded,
-        ]
+        [currentIndex, vocabularyData, dialect, getAudioUrl, delay, setAudioError, setIsPlaying, setIsLooping, updateProgress, onWordEnded]
     )
 
     const handleAudioToggle = async () => {
@@ -279,7 +290,7 @@ export function useAudioManager({
             onDoneCourse()
         } else {
             const isCompleted = vocabularyData.every(word =>
-                Number(word.progress || 0) >= Number(word.maxRead || 3)
+                Number(word.word_progress || 0) >= Number(word.word_max_read || 3)
             )
 
             let startIndex = currentIndex

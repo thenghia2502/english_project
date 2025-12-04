@@ -2,41 +2,37 @@
 
 import { useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useCreateLesson, useUpdateLesson } from "@/hooks"
-import { Lesson, LessonWord } from "@/lib/types"
-import { LocalWord, LessonWithWords } from "./types"
+import { useCreateLesson, useUpdateLessonWords } from "@/hooks"
+import { LessonWord } from "@/lib/types"
+import { LocalWord } from "./types"
 
 interface UseLessonBuilderLogicProps {
     // Data
-    lessonsFiltered: LessonWithWords[]
     data: { [key: string]: LocalWord[] }
     lessonWords: LessonWord[]
     courseName: string
-    actualCCId: string
     lessonById?: unknown
-    curriculumId?: string
-    
+    selectedUnitsFromModal: string[]
+    curriculumOriginalId: string            // NEW
+
     // Setters
     setLessonWords: React.Dispatch<React.SetStateAction<LessonWord[]>>
-    setLessonsFiltered: React.Dispatch<React.SetStateAction<LessonWithWords[]>>
     setData: React.Dispatch<React.SetStateAction<{ [key: string]: LocalWord[] }>>
 }
 
 export function useLessonBuilderLogic({
-    lessonsFiltered,
     data,
-    lessonWords,
+    lessonWords: initialLessonWords,
     courseName,
-    actualCCId,
-    curriculumId,
+    selectedUnitsFromModal,
     lessonById,
     setLessonWords,
-    setLessonsFiltered,
-    setData
+    setData,
+    curriculumOriginalId                     // NEW
 }: UseLessonBuilderLogicProps) {
     const router = useRouter()
     const { mutate: createLessonMutation } = useCreateLesson()
-    const { mutate: updateLessonMutation } = useUpdateLesson()
+    const { mutateAsync: updateLessonWordsMutation } = useUpdateLessonWords()
 
     // Get selected words count
     const getSelectedCount = useCallback(() => {
@@ -52,99 +48,93 @@ export function useLessonBuilderLogic({
 
     // Transfer selected words to course builder
     const transferSelectedWords = useCallback(() => {
-        const selectedWords: LessonWord[] = []
+        // Thu thập các từ được chọn, loại trùng ngay trong batch hiện tại
+        const selectedMap = new Map<string, LessonWord>()
 
-        // Get words from lessons
-        lessonsFiltered.forEach((lesson) => {
-            lesson.words.forEach((word) => {
-                if (word.selected) {
-                    selectedWords.push({
-                        id: word.id,
-                        word: word.word,
-                        meaning: word.meaning,
-                        ipa: word.ipa,
-                        pause_time: "2",
-                        maxRead: "6",
-                        show_ipa: "3",
-                        show_word: "1",
-                        show_ipa_and_word: "2",
-                        reads_per_round: "6",
-                        progress: "0"
-                    })
-                }
-            })
-        })
-
-        // Get words from data
         Object.values(data).forEach((words) => {
             words.forEach((word) => {
-                if (word.selected) {
-                    selectedWords.push({
-                        id: word.id,
-                        meaning: word.meaning,
-                        ipa: word.ipa,
-                        word: word.word,
-                        pause_time: "2",
-                        maxRead: "6",
-                        show_ipa: "3",
-                        show_word: "1",
-                        show_ipa_and_word: "2",
-                        reads_per_round: "6",
-                        progress: "0"
-                    })
-                }
+                if (!word.selected) return
+                if (selectedMap.has(word.word_id)) return
+
+                selectedMap.set(word.word_id, {
+                    word_id: word.word_id,
+                    word: word.word,
+                    word_meaning: word.word_meaning,
+                    word_ipa: word.word_ipa,
+                    word_pause_time: "2",
+                    word_max_read: "6",
+                    word_show_ipa: "3",
+                    word_show_word: "1",
+                    word_show_ipa_and_word: "2",
+                    word_reads_per_round: "6",
+                    word_progress: "0",
+                    word_popularity: word.word_popularity || 0,
+                    word_parent_id: word.word_parent_id || ""
+                })
             })
         })
 
-        // Remove duplicates and add to lesson words
+        const uniqueSelected = Array.from(selectedMap.values())
+
         setLessonWords((prevWords) => {
-            const existingIds = prevWords.map((w) => w.id)
-            const newWords = selectedWords.filter((w) => !existingIds.includes(w.id))
-            return [...prevWords, ...newWords]
+            // Loại trùng so với danh sách đã có
+            const existingIds = new Set(prevWords.map((w) => w.word_id))
+            const additions = uniqueSelected.filter((w) => !existingIds.has(w.word_id))
+            return [...prevWords, ...additions]
         })
-    }, [lessonsFiltered, data, setLessonWords])
+    }, [data, setLessonWords])
 
     // Update lesson word properties
-    const updateLessonWord = useCallback((wordId: string, field: keyof LessonWord, value: string) => {
-        const normalizeField = (f: string) => {
+    const updateLessonWord = useCallback((wordId: string, field: keyof LessonWord | string, value: string) => {
+        // Chuẩn hóa field về dạng snake_case đúng với LessonWord
+        const mapField = (f: string): keyof LessonWord => {
+            const directKeys: (keyof LessonWord)[] = [
+                'word_max_read',
+                'word_show_ipa',
+                'word_show_word',
+                'word_show_ipa_and_word',
+                'word_reads_per_round',
+                'word_pause_time',
+                'word_progress'
+            ]
+            if (directKeys.includes(f as keyof LessonWord)) return f as keyof LessonWord
             switch (f) {
-                case 'maxReads': return 'maxRead'
-                case 'showIpa': return 'show_ipa'
-                case 'showWord': return 'show_word'
-                case 'showIpaAndWord': return 'show_ipa_and_word'
-                case 'readsPerRound': return 'reads_per_round'
-                default: return f
+                case 'maxReads': return 'word_max_read'
+                case 'showIpa': return 'word_show_ipa'
+                case 'showWord': return 'word_show_word'
+                case 'showIpaAndWord': return 'word_show_ipa_and_word'
+                case 'readsPerRound': return 'word_reads_per_round'
+                case 'pauseTime': return 'word_pause_time'
+                default: return f as keyof LessonWord
             }
         }
-        const canonicalField = normalizeField(String(field)) as keyof LessonWord
-        
-        setLessonWords((prevWords) => 
-            prevWords.map((word) => 
-                (word.id === wordId ? { ...word, [canonicalField]: value } : word)
-            )
+        const canonical = mapField(String(field))
+
+        setLessonWords((prev) =>
+            prev.map((w) => (w.word_id === wordId ? { ...w, [canonical]: value } as LessonWord : w))
         )
     }, [setLessonWords])
 
     // Update max reads and calculate related values
     const updateMaxReadsLessonWord = useCallback((wordId: string, value: string) => {
-        const maxReads = Number(value)
+        const maxReads = Math.max(0, Number(value) || 0)
         const showIpa = Math.floor(maxReads * 0.6)
         const showWord = Math.floor(maxReads * 0.3)
-        const showIpaAndWord = maxReads - showIpa - showWord
-        const readsPerRound = maxReads < 6 ? maxReads : 6
+        const showIpaAndWord = Math.max(0, maxReads - showIpa - showWord)
+        const readsPerRound = Math.min(maxReads || 0, 6)
 
-        setLessonWords((prevWords) =>
-            prevWords.map((word) =>
-                word.id === wordId
+        setLessonWords((prev) =>
+            prev.map((w) =>
+                w.word_id === wordId
                     ? {
-                        ...word,
-                        maxRead: String(maxReads),
-                        show_ipa: String(showIpa),
-                        show_word: String(showWord),
-                        show_ipa_and_word: String(showIpaAndWord),
-                        reads_per_round: String(readsPerRound)
+                        ...w,
+                        word_max_read: String(maxReads),
+                        word_show_ipa: String(showIpa),
+                        word_show_word: String(showWord),
+                        word_show_ipa_and_word: String(showIpaAndWord),
+                        word_reads_per_round: String(readsPerRound)
                     }
-                    : word
+                    : w
             )
         )
     }, [setLessonWords])
@@ -152,36 +142,26 @@ export function useLessonBuilderLogic({
     // Remove word from lesson
     const removeLessonWord = useCallback((wordId: string) => {
         // Remove from lesson words
-        setLessonWords((prevWords) => prevWords.filter((word) => word.id !== wordId))
-
-        // Unselect from lessons filtered
-        setLessonsFiltered((prevLessons) =>
-            prevLessons.map((lesson) => ({
-                ...lesson,
-                words: lesson.words.map((word) =>
-                    word.id === wordId ? { ...word, selected: false } : word
-                ),
-            }))
-        )
+        setLessonWords((prevWords) => prevWords.filter((word) => word.word_id !== wordId))
 
         // Unselect from data
         setData((prevData) => {
             const newData: typeof prevData = {}
             for (const key in prevData) {
                 newData[key] = prevData[key].map((word) =>
-                    word.id === wordId ? { ...word, selected: false } : word
+                    word.word_id === wordId ? { ...word, selected: false } : word
                 )
             }
             return newData
         })
-    }, [setLessonWords, setLessonsFiltered, setData])
+    }, [setLessonWords, setData])
 
     // Calculate estimated time
     const calculateEstimatedTime = useCallback(() => {
         let totalSeconds = 0
 
-        lessonWords.forEach((word) => {
-            const readCount = Number.parseInt(word.maxRead) || 0
+        initialLessonWords.forEach((word) => {
+            const readCount = Number.parseInt(word.word_max_read) || 0
             if (readCount > 0) {
                 const readingTime = readCount * 2
                 totalSeconds += readingTime
@@ -196,29 +176,43 @@ export function useLessonBuilderLogic({
         } else {
             return `${seconds}s`
         }
-    }, [lessonWords])
+    }, [initialLessonWords])
 
     // Create new lesson
     const handleCreateLesson = useCallback(async () => {
-        const id = `ls${Date.now()}`
-        const estimatedTime = calculateEstimatedTime()
+        const name = courseName.trim()
+        if (!name) {
+            alert('Vui lòng nhập tên bài học')
+            return
+        }
+        if (!curriculumOriginalId) {
+            alert('Vui lòng chọn giáo trình')
+            return
+        }
+        if (initialLessonWords.length === 0) {
+            alert('Vui lòng chọn ít nhất một từ vựng')
+            return
+        }
 
         const newLesson = {
-            id,
-            name: courseName.trim(),
-            estimatedTime,
-            words: lessonWords.map((w) => ({ ...w })),
-            done: '0',
-            curriculum_custom_id: actualCCId || '',
-            createdAt: new Date().toISOString(),
-            curriculum_original_id: curriculumId || ''
+            name,
+            words: initialLessonWords.map((w) => ({
+                word_id: w.word_id,
+                word_max_read: w.word_max_read,
+                word_show_ipa: w.word_show_ipa,
+                word_show_word: w.word_show_word,
+                word_show_ipa_and_word: w.word_show_ipa_and_word,
+                word_reads_per_round: w.word_reads_per_round,
+                word_pause_time: w.word_pause_time
+            })),
+            unit_ids: selectedUnitsFromModal,
+            order: 1,
+            curriculum_original_id: curriculumOriginalId     // FIX
         }
 
         try {
             createLessonMutation(newLesson, {
-                onSuccess: () => {
-                    router.push('/baihoc')
-                },
+                onSuccess: () => router.push('/lesson'),
                 onError: (error) => {
                     console.error('Failed to create lesson:', error)
                     alert('Failed to create lesson. Please try again.')
@@ -227,47 +221,54 @@ export function useLessonBuilderLogic({
         } catch (err) {
             console.error('Failed to create course locally', err)
         }
-    }, [calculateEstimatedTime, courseName, lessonWords, actualCCId, curriculumId, createLessonMutation, router])
+    }, [courseName, initialLessonWords, selectedUnitsFromModal, curriculumOriginalId, createLessonMutation, router])
 
     // Update existing lesson
     const handleUpdateLesson = useCallback(async () => {
-        if (!lessonById) {
-            alert('Không tìm thấy bài học để cập nhật')
+        if (!courseName.trim()) {
+            alert('Vui lòng nhập tên bài học')
             return
         }
 
-        const estimatedTime = calculateEstimatedTime()
-        const asRecord = lessonById as unknown as Record<string, unknown>
-        const toStr = (v: unknown) => (v === undefined || v === null) ? '' : String(v)
-        const created_at = toStr(asRecord['created_at'] ?? asRecord['createdAt'] ?? new Date().toISOString())
+        if (initialLessonWords.length === 0) {
+            alert('Vui lòng chọn ít nhất một từ vựng')
+            return
+        }
 
-        const payload: Lesson = {
-            id: toStr(asRecord['id']),
-            name: courseName.trim(),
-            words: lessonWords.map((w) => ({ ...w })),
-            created_at,
-            updated_at: new Date().toISOString(),
-            estimatedTime,
-            done: toStr(asRecord['done'] ?? '0'),
-            curriculum_custom_id: actualCCId 
+        if (!lessonById) {
+            alert('Không tìm thấy thông tin bài học')
+            return
         }
 
         try {
-            updateLessonMutation(payload, {
+            const payload = {
+                lesson_id: (lessonById as unknown as Record<string, unknown>)['lesson_id'] as string,
+                words: initialLessonWords.map((w) => ({
+                    word_id: w.word_id,
+                    word_progress: w.word_progress,
+                    word_max_read: w.word_max_read,
+                    word_show_ipa: w.word_show_ipa,
+                    word_show_word: w.word_show_word,
+                    word_show_ipa_and_word: w.word_show_ipa_and_word,
+                    word_reads_per_round: w.word_reads_per_round,
+                    word_pause_time: w.word_pause_time
+                }))
+            }
+
+            console.log('📤 Updating lesson with payload:', payload)
+            await updateLessonWordsMutation(payload, {
                 onSuccess: () => {
-                    router.push('/baihoc')
+                    router.push('/lesson')
                 },
                 onError: (error) => {
                     console.error('Failed to update lesson:', error)
                     alert('Failed to update lesson. Please try again.')
                 }
             })
-        } catch (err) {
-            console.error('Failed to update lesson locally', err)
-            alert('Có lỗi xảy ra khi cập nhật bài học')
+        } catch (error) {
+            console.error('❌ Failed to update lesson:', error)
         }
-    }, [lessonById, courseName, lessonWords, actualCCId, calculateEstimatedTime, updateLessonMutation, router])
-
+    }, [courseName, lessonById, initialLessonWords, updateLessonWordsMutation, router])
     return {
         getSelectedCount,
         transferSelectedWords,

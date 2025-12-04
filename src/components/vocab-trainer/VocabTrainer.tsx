@@ -21,6 +21,7 @@ import { useAudioManager } from "@/components/vocab-trainer/useAudioManager"
 // Audio data imports
 import audioDataLocalUK from '../../app/datalocaluk.json'
 import audioDataLocalUS from '../../app/datalocalus.json'
+import { useGetUrlAudio } from "@/hooks/use-audios"
 
 function getAudioUrlLocal(word: string, dialect: string): string | null {
     let data: { [key: string]: string } = {}
@@ -45,6 +46,7 @@ export default function VocabTrainer() {
     } = useLessonById(lessonId)
 
     const updateLessonMutation = useUpdateLesson()
+    const getAudioUrl = useGetUrlAudio()
 
     // Zustand store
     const { setError: setGlobalError } = useUIStore()
@@ -112,38 +114,35 @@ export default function VocabTrainer() {
     const onDoneCourse = useCallback(async () => {
         if (!selectedLesson || vocabularyData.length === 0) return
 
-        const totalProgress = vocabularyData.reduce((sum, word) => sum + Number(word.progress), 0)
-        const totalMaxReads = vocabularyData.reduce((sum, word) => sum + Number(word.maxRead), 0)
+        // const totalProgress = vocabularyData.reduce((sum, word) => sum + Number(word.progress), 0)
+        // const totalMaxReads = vocabularyData.reduce((sum, word) => sum + Number(word.maxRead), 0)
 
-        let done = 0
-        if (selectedLesson.words.every((word) => Number(word.progress) >= Number(word.maxRead))) {
-            done = 100
-        } else if (totalMaxReads > 0) {
-            done = Math.round((totalProgress / totalMaxReads) * 100)
-        }
+        // let done = 0
+        // if (selectedLesson.words.every((word) => Number(word.progress) >= Number(word.maxRead))) {
+        //     done = 100
+        // } else if (totalMaxReads > 0) {
+        //     done = Math.round((totalProgress / totalMaxReads) * 100)
+        // }
 
         try {
-            const wordsPayload: LessonWord[] = vocabularyData.map((w) => ({
-                id: String(w.id),
-                word: w.word,
-                ipa: w.ipa,
-                meaning: w.meaning,
-                example: w.example,
-                pause_time: String(w.pause_time),
-                maxRead: String(w.maxRead),
-                show_ipa: String(w.show_ipa),
-                show_word: String(w.show_word),
-                show_ipa_and_word: String(w.show_ipa_and_word),
-                reads_per_round: String(w.reads_per_round),
-                progress: String(w.progress),
+            // Transform vocabularyData to new format
+            const wordsPayload = vocabularyData.map((w) => ({
+                word_id: w.word_id,
+                word_progress: Number(w.word_progress) || 0,
+                word_pause_time: Number(w.word_pause_time) || 1.5, // Lưu bằng giây (s), không phải milliseconds
             }))
+
+            // Get unit_ids from selectedLesson (if available)
+            const unit_ids = selectedLesson.units ? selectedLesson.units.map(unit => unit.unit_id) : selectedLesson.unit_ids ? selectedLesson.unit_ids : []
 
             updatingLessonRef.current = true
             setIsUpdatingLesson(true)
             await updateLessonMutation.mutateAsync({
-                ...selectedLesson,
+                lesson_id: selectedLesson.lesson_id,
+                lesson_name: selectedLesson.lesson_name,
+                lesson_order: selectedLesson.lesson_order || 1,
+                unit_ids: unit_ids,
                 words: wordsPayload,
-                done: String(done),
             })
             
             // Không cần update lại vocabularyData từ response vì data local đã chính xác
@@ -162,6 +161,7 @@ export default function VocabTrainer() {
         currentIndex,
         dialect,
         isLooping,
+        getAudioUrl,
         setIsPlaying,
         setIsLooping,
         setAudioError,
@@ -172,7 +172,7 @@ export default function VocabTrainer() {
 
     // Transform course data to vocabulary data when course is loaded
     useEffect(() => {
-        if (!selectedLesson || !Array.isArray(selectedLesson.words)) {
+        if (!selectedLesson || !Array.isArray(selectedLesson.lesson_words)) {
             if (!updatingLessonRef.current) {
                 setVocabularyData([])
                 setIsTransformingData(false)
@@ -180,7 +180,7 @@ export default function VocabTrainer() {
             return
         }
 
-        if (Array.isArray(selectedLesson.words) && selectedLesson.words.length === 0 && updatingLessonRef.current) {
+        if (Array.isArray(selectedLesson.lesson_words) && selectedLesson.lesson_words.length === 0 && updatingLessonRef.current) {
             return
         }
 
@@ -189,28 +189,45 @@ export default function VocabTrainer() {
             return
         }
 
-        const transformCourseData = () => {
+        const transformCourseData = async () => {
             setIsTransformingData(true)
             setTransformError(null)
             try {
-                const transformedData = selectedLesson.words.map((cw) => {
-                    const id = String(cw.id ?? '')
-                    const wordText = String(cw.word)
-                    return {
-                        id,
-                        word: wordText,
-                        ipa: String(cw.ipa),
-                        meaning: String(cw.meaning),
-                        audioUrl: getAudioUrlLocal(wordText, dialect) || '',
-                        maxRead: String(cw.maxRead),
-                        show_ipa: String(cw.show_ipa),
-                        show_word: String(cw.show_word),
-                        show_ipa_and_word: String(cw.show_ipa_and_word),
-                        progress: String(cw.progress),
-                        reads_per_round: String(cw.reads_per_round),
-                        pause_time: String(cw.pause_time),
-                    }
-                })
+                // Transform words with audio URLs fetched in parallel
+                const transformedData = await Promise.all(
+                    selectedLesson.lesson_words.map(async (cw) => {
+                        const id = String(cw.word_id ?? '')
+                        const wordText = String(cw.word)
+                        
+                        // Try to get audio URL, fallback to local or empty string
+                        let audioUrl = ''
+                        // try {
+                            audioUrl = await getAudioUrl(wordText, dialect)
+                        // } catch {
+                        //     // Fallback to local audio if API fails
+                        //     audioUrl = getAudioUrlLocal(wordText, dialect) || ''
+                        // }
+                        
+                        return {
+                            word_id: id,
+                            word: wordText,
+                            word_ipa: String(cw.word_ipa),
+                            word_meaning: String(cw.word_meaning),
+                            audioUrl,
+                            word_max_read: String(cw.word_max_read) || '3',
+                            word_show_ipa: String(cw.word_show_ipa) || '1',
+                            word_show_word: String(cw.word_show_word) || '1',
+                            word_show_ipa_and_word: String(cw.word_show_ipa_and_word) || '1',
+                            word_progress: String(cw.word_progress) || '0',
+                            word_reads_per_round: String(cw.word_reads_per_round) || '1',
+                            word_pause_time: String(cw.word_pause_time) || '0',
+                            word_parent_id: String(cw.word_parent_id) || '',
+                            word_popularity: Number(cw.word_popularity) || 0,
+                            example: cw.example ? String(cw.example) : undefined,
+                        }
+                    })
+                )
+                
                 setVocabularyData(transformedData)
             } catch (error) {
                 console.error("Error transforming course data:", error)
@@ -223,7 +240,7 @@ export default function VocabTrainer() {
         }
 
         transformCourseData()
-    }, [dialect, selectedLesson])
+    }, [dialect, selectedLesson, getAudioUrl])
 
     // Update audio URLs when dialect changes
     useEffect(() => {
@@ -268,7 +285,7 @@ export default function VocabTrainer() {
     // Update course word function
     const updateCourseWord = (wordId: string, field: keyof LessonWord, value: string) => {
         setVocabularyData((prevWords) => {
-            const updated = prevWords.map((word) => (word.id === wordId ? { ...word, [field]: value } : word))
+            const updated = prevWords.map((word) => (word.word_id === wordId ? { ...word, [field]: value } : word))
             return updated
         })
     }
@@ -279,6 +296,27 @@ export default function VocabTrainer() {
         // Stop current audio if playing
         // This would need to be exposed from the audio manager if needed
     }
+
+    // Hàm reset progress của tất cả các từ
+    const handleRestart = useCallback(() => {
+        console.log('🔄 Restarting course - resetting all word progress to 0')
+        
+        // Reset progress của tất cả các từ về 0
+        const resetData = vocabularyData.map(word => ({
+            ...word,
+            word_progress: '0'
+        }))
+        
+        setVocabularyData(resetData)
+        setCurrentIndex(0)
+        setIsPlaying(false)
+        setIsLooping(false)
+        
+        // Delay nhỏ để state update xong, sau đó bắt đầu phát
+        setTimeout(() => {
+            audioManager.handleAudioToggle()
+        }, 100)
+    }, [vocabularyData, audioManager])
 
     // Error handling
     if (!lessonId) {
@@ -347,8 +385,8 @@ export default function VocabTrainer() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <TopNavigation lessonName={selectedLesson?.name} />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+            <TopNavigation lessonName={selectedLesson?.lesson_name} />
             
             <main className="mx-auto min-h-[52rem] px-4 py-8 sm:px-6 lg:pb-8 lg:pt-16 flex flex-col space-y-5">
                 <div className="my-3 flex justify-between">
@@ -370,6 +408,7 @@ export default function VocabTrainer() {
                             vocabularyData={vocabularyData}
                             onAudioToggle={audioManager.handleAudioToggle}
                             onRetryAudio={audioManager.handleRetryAudio}
+                            onRestart={handleRestart}
                         />
                     </div>
                 </div>
