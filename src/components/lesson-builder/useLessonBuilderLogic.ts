@@ -58,7 +58,7 @@ export function useLessonBuilderLogic({
 
                 selectedMap.set(word.word_id, {
                     word_id: word.word_id,
-                    word: word.word,
+                    word: word.word_text,
                     word_meaning: word.word_meaning,
                     word_ipa: word.word_ipa,
                     word_pause_time: "2",

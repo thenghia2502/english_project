@@ -17,6 +17,7 @@ import LessonWordsTable from "@/components/lesson-builder/LessonWordsTable"
 import { useLessonBuilderLogic } from "@/components/lesson-builder/useLessonBuilderLogic"
 import { LocalWord } from "@/components/lesson-builder/types"
 import Modal from "./Modal"
+// import ModalAddWords from "./ModalAddWords"
 
 export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update', id?: string }) {
     // URL parameters
@@ -65,7 +66,10 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         interface ApiUnitData {
             unit_id: string;
             unit_name: string;
-            unit_words: ApiWordData[];
+            unit_words: {
+                original?: ApiWordData[];
+                custom?: ApiWordData[];
+            }
         }
 
         try {
@@ -86,17 +90,18 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             const initialData: { [key: string]: LocalWord[] } = {}
 
             wordsData.forEach((unitData: ApiUnitData) => {
+
                 // Roots for UI (unit.words contains only roots)
-                const roots: Word[] = (unitData.unit_words || []).map((w: ApiWordData): Word => ({
+                const root_original = (unitData.unit_words.original || []).map((w: ApiWordData): Word => ({
                     word_id: w.word_id,
-                    word: (w as unknown as { word?: string }).word ?? w.word_text,
+                    word_text: (w as unknown as { word?: string }).word ?? w.word_text,
                     word_meaning: w.word_meaning || '-',
                     word_ipa: w.word_ipa,
                     word_popularity: w.word_popularity || 0,
                     word_parent_id: undefined,
                     children: Array.isArray(w.children) ? w.children.map((c: ApiChildWord): Word => ({
                         word_id: c.word_id,
-                        word: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
+                        word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
                         word_meaning: c.word_meaning ?? '-',
                         word_ipa: c.word_ipa ?? '-',
                         word_popularity: c.word_popularity ?? 0,
@@ -104,45 +109,77 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     })) : []
                 }))
 
+                // Roots for UI (unit.words contains only roots)
+                const root_custom = (unitData.unit_words.custom || []).map((w: ApiWordData): Word => ({ 
+                    word_id: w.word_id,
+                    word_text: (w as unknown as { word?: string }).word ?? w.word_text,
+                    word_meaning: w.word_meaning || '-',
+                    word_ipa: w.word_ipa,
+                    word_popularity: w.word_popularity || 0,
+                    word_parent_id: undefined,
+                    children: Array.isArray(w.children) ? w.children.map((c: ApiChildWord): Word => ({
+                        word_id: c.word_id,
+                        word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
+                        word_meaning: c.word_meaning ?? '-',
+                        word_ipa: c.word_ipa ?? '-',
+                        word_popularity: c.word_popularity ?? 0,
+                        word_parent_id: undefined
+                    })) : []
+                }))
                 transformedUnits.push({
                         unit_id: unitData.unit_id,
                         unit_name: unitData.unit_name,
-                        words: roots
+                        words: {
+                            original: root_original,
+                            custom: root_custom
+                        }
                     })
 
                 // Flatten roots + children into data for selection state
                 const list: LocalWord[] = []
-                ; (unitData.unit_words || []).forEach((w: ApiWordData) => {
-                        list.push({
-                            word_id: w.word_id,
-                            word: (w as unknown as { word?: string }).word ?? w.word_text,
-                            word_meaning: w.word_meaning || '-',
-                            word_ipa: w.word_ipa || '-',
-                            word_popularity: w.word_popularity || 0,
-                            word_parent_id: undefined,
-                            selected: false,
-                            done: false,
-                            belong: ''
-                        })
+                const originals = Array.isArray(unitData.unit_words.original) ? unitData.unit_words.original : []
+                const customs = Array.isArray(unitData.unit_words.custom) ? unitData.unit_words.custom : []
 
-                        if (Array.isArray(w.children) && w.children.length > 0) {
-                            w.children.forEach((c: ApiChildWord) => {
-                                list.push({
-                                    word_id: c.word_id,
-                                    word: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
-                                    word_meaning: c.word_meaning ?? '-',
-                                    word_ipa: c.word_ipa ?? '-',
-                                    word_popularity: c.word_popularity ?? 0,
-                                    word_parent_id: w.word_id,
-                                    selected: false,
-                                    done: false,
-                                    belong: ''
-                                })
-                            })
-                        }
+                const allRoots: ApiWordData[] = [...originals, ...customs]
+
+                allRoots.forEach((w: ApiWordData) => {
+                    // Push root word
+                    list.push({
+                        word_id: w.word_id,
+                        word_text: (w as unknown as { word?: string }).word ?? w.word_text,
+                        word_meaning: w.word_meaning || '-',
+                        word_ipa: w.word_ipa || '-',
+                        word_popularity: w.word_popularity || 0,
+                        word_parent_id: undefined,
+                        selected: false,
+                        done: false,
+                        belong: ''
                     })
 
-                initialData[unitData.unit_id] = list
+                    // Push children if any
+                    if (Array.isArray(w.children) && w.children.length > 0) {
+                        w.children.forEach((c: ApiChildWord) => {
+                            list.push({
+                                word_id: c.word_id,
+                                word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
+                                word_meaning: c.word_meaning ?? '-',
+                                word_ipa: c.word_ipa ?? '-',
+                                word_popularity: c.word_popularity ?? 0,
+                                word_parent_id: w.word_id,
+                                selected: false,
+                                done: false,
+                                belong: ''
+                            })
+                        })
+                    }
+                })
+
+                // Deduplicate by word_id to avoid duplicate keys downstream
+                const uniqueMap = new Map<string, LocalWord>()
+                for (const lw of list) {
+                    if (!uniqueMap.has(lw.word_id)) uniqueMap.set(lw.word_id, lw)
+                }
+                initialData[unitData.unit_id] = Array.from(uniqueMap.values())
             })
 
             setUnits(transformedUnits)
@@ -279,7 +316,10 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     // }
 
 
-
+    // const [isModalAddWordsOpen, setIsModalAddWordsOpen] = useState(false);
+    // const handleOpenModalAddWords = () => {
+    //     setIsModalAddWordsOpen(true);
+    // }
     return (
         <div className="min-h-screen bg-gray-100">
             {/* Chỉ render Modal trong create mode để tránh fetch không cần thiết */}
@@ -291,6 +331,11 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     onSuccess={handleModalSuccess}
                 />
             )}
+            {/* {
+                isModalAddWordsOpen && (
+                    <ModalAddWords unitId={""} />
+                )
+            } */}
             <TopNavigation
                 isEditMode={isEditMode}
                 onOpenModal={() => setIsModalOpen(true)}
@@ -316,6 +361,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                                     expandedChildGroups={expandedChildGroups}
                                     setData={setData}
                                     setExpandedChildGroups={setExpandedChildGroups}
+                                    // onOpenModalAddWords={handleOpenModalAddWords}
                                 />
                             </div>
                         )}

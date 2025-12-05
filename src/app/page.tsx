@@ -1,5 +1,7 @@
+import { Sign } from "crypto";
 import CurriculumOriginalManagementPage from "./curriculum/page";
 import Test from "./test";
+import SignUpPage from "./signUpPage";
 
 export default function Home() {
   return (
@@ -17,8 +19,9 @@ export default function Home() {
     // }}
     // />
     // <SpeechToText />
-    <CurriculumOriginalManagementPage />
+    // <CurriculumOriginalManagementPage />
     // <Test/>
+    <SignUpPage />
   );
 }
 

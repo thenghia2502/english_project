@@ -1,6 +1,6 @@
 export interface Curriculum {
     id: string
-    curriculum_name: string
+    name: string
     description?: string
 }
 

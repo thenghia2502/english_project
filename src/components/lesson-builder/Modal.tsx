@@ -172,6 +172,7 @@ export default function Modal({
                         onClick={onClose}
                         className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                         disabled={isSubmitting}
+                        aria-label="Close"
                     >
                         <X className="w-5 h-5 text-gray-500" />
                     </button>

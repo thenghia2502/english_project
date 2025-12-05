@@ -54,6 +54,7 @@ export default function UnitFilter({ units, selectedUnitIds, setSelectedUnitIds 
                                         setSelectedUnitIds([])
                                     }
                                 }}
+                                aria-label="All"
                             />
                         </div>
                         {units.map((unit) => (

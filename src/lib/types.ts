@@ -1,6 +1,6 @@
 export interface Word {
     word_id: string
-    word: string
+    word_text: string
     word_meaning: string
     word_ipa?: string
     selected?: boolean
@@ -104,7 +104,44 @@ export type Unit = {
     unit_id: string
     unit_name: string
     unit_title?: string
-    words: Word[]
+    words: {
+        original: {
+            word_id: string;
+            word_text: string;
+            word_meaning?: string;
+            word_ipa?: string;
+            word_popularity?: number;
+            word_parent_id?: string | null;
+            children?: {
+                word_id: string;
+                word_text?: string;
+                word?: string;
+                word_meaning?: string;
+                word_ipa?: string;
+                word_popularity?: number;
+                lesson_ids?: string[];
+                lesson_names?: string[];
+            }[]
+        }[]
+        custom: {
+            word_id: string;
+            word_text: string;
+            word_meaning?: string;
+            word_ipa?: string;
+            word_popularity?: number;
+            word_parent_id?: string | null;
+            children?: {
+                word_id: string;
+            word_text?: string;
+            word?: string;
+            word_meaning?: string;
+            word_ipa?: string;
+            word_popularity?: number;
+            lesson_ids?: string[];
+            lesson_names?: string[];
+            }[]
+        }[]
+    }
 }
 
 export interface Level {

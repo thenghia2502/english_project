@@ -37,7 +37,7 @@ export default function CurriculumSelector({
                   variant="outline"
                   className="w-full justify-between text-gray-900"
                 >
-                  {selectedCurriculum?.curriculum_name || "Chọn giáo trình gốc"}
+                  {selectedCurriculum?.name || "Chọn giáo trình gốc"}
                 </Button>
               </DropdownMenuTrigger>
 
@@ -50,7 +50,7 @@ export default function CurriculumSelector({
                       onCurriculumChange()
                     }}
                   >
-                    {cur.curriculum_name}
+                    {cur.name}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
