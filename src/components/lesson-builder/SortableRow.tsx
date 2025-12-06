@@ -27,10 +27,10 @@ export default function SortableRow({
   const id = word.word_id
 
   return (
-    <TableRow id={id} className="border-b">
+    <TableRow id={id} className="border-b text-gray-900">
       <TableCell className="py-3 px-6">
         <div className="font-medium">{word.word}</div>
-        <div className="text-gray-500 text-sm">{word.ipa}</div>
+        {/* <div className="text-gray-700 text-sm">{word.ipa}</div> */}
       </TableCell>
 
       {/* Số lần đọc tối đa */}

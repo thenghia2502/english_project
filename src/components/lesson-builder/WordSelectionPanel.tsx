@@ -4,7 +4,7 @@ import React, { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Word } from "@/lib/types"
+import { Unit, Word } from "@/lib/types"
 import { LocalWord } from "./types"
 import ModalAddWords from "./ModalAddWords"
 
@@ -35,36 +35,7 @@ interface WordListUnit {
 }
 
 interface WordSelectionPanelProps {
-    units: WordListUnit[] | {
-        unit_words: {
-            original: {
-                word_id: string;
-                word_text: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                word_parent_id?: string | null;
-                children_count: number;
-            }[]
-            custom: {
-                word_id: string;
-                word_text: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                word_parent_id?: string | null;
-                children_count: number;
-            }[]
-        }
-        unit_id: string;
-        unit_name: string;
-        unit_description?: string | undefined;
-        unit_order?: number | undefined;
-        level_id: string;
-        level_name: string;
-        level_code: string;
-        level_description?: string | undefined;
-    }[]
+    units: Unit[]
     selectedUnitIds: string[]
     data: {
         [key: string]: LocalWord[];
@@ -84,21 +55,6 @@ export default function WordSelectionPanel({
     setExpandedChildGroups,
     // onOpenModalAddWords
 }: WordSelectionPanelProps) {
-    type ApiChildWord = {
-        word_id: string
-        word_text?: string
-        word?: string
-        word_ipa?: string
-        word_meaning?: string
-        word_popularity?: number
-        lesson_ids?: string[]
-        lesson_names?: string[]
-    }
-
-    type IncomingWord = Word & {
-        children?: ApiChildWord[]
-        word_text?: string
-    }
 
     const getWordSelected = (unitId: string, wordId: string) => {
         const list = data[unitId]
@@ -107,41 +63,16 @@ export default function WordSelectionPanel({
         return !!(found && found.selected)
     }
 
-    const toggleWordSelection = (unitId: string, wordId: string, unitWords?: {
-        original: {
-            word_id: string;
-            word_text: string;
-            word_meaning?: string;
-            word_ipa?: string;
-            word_popularity?: number;
-            word_parent_id?: string | null;
-            children_count: number;
-        }[]
-        custom: {
-            word_id: string;
-            word_text: string;
-            word_meaning?: string;
-            word_ipa?: string;
-            word_popularity?: number;
-            word_parent_id?: string | null;
-            children_count: number;
-        }[]
-    }) => {
+    const toggleWordSelection = (unitId: string, wordId: string) => {
         setData((prev) => {
             // If data already exists for this unit, update it
             if (prev[unitId]) {
-                const updated = prev[unitId].map((w: LocalWord) => 
+                const updated = prev[unitId].map((w: LocalWord) =>
                     w.word_id === wordId ? { ...w, selected: !w.selected } : w
                 )
                 return { ...prev, [unitId]: updated }
             }
-
-            // If not yet created, initialize from unitWords
-            const prevListOriginal = (unitWords?.original ?? []).map((w) => ({ ...w, selected: false }))
-            const prevListCustom = (unitWords?.custom ?? []).map((w) => ({ ...w, selected: false }))
-            const prevList = prevListOriginal.concat(prevListCustom)
-            const updated = prevList.map((w: LocalWord) => (w.word_id === wordId ? { ...w, selected: !w.selected } : w))
-            return { ...prev, [unitId]: updated }
+            return prev
         })
     }
 
@@ -151,14 +82,14 @@ export default function WordSelectionPanel({
         return (
             <TableRow
                 key={word.word_id || word.id}
-                className={`hover:bg-gray-50 text-gray-900 flex ${type === 1 ? '' : 'bg-gray-200'}`}
-                onClick={() => toggleWordSelection(unit.unit_id, word.word_id, unit.unit_words)}
+                className={`hover:bg-gray-50 text-gray-900 flex ${type === 1 ? 'bg-[#b9d7fd]' : type === 2 ?'bg-[#ffedd9]' : 'bg-[#8890ff]'} border-b border-gray-200 cursor-pointer`}
+                onClick={() => toggleWordSelection(unit.unit_id, word.word_id)}
             >
                 <TableCell className="px-4 py-3 w-1/3">
                     <div className={`flex items-center space-x-3 ${word.word_parent_id ? 'pl-2.5' : ''}`}>
                         <div>
                             <div className="font-medium text-gray-900">{word.word_text || word.word}</div>
-                            <div className="text-sm text-gray-500">{word.word_ipa}</div>
+                            {/* <div className="text-sm text-gray-500">{word.word_ipa}</div> */}
                         </div>
                     </div>
                 </TableCell>
@@ -225,7 +156,7 @@ export default function WordSelectionPanel({
             if (Array.isArray(children) && children.length > 0) {
                 setData(prev => {
                     const list = prev[unitId] || []
-                    const childLocalWords: LocalWord[] = children.map((c: any) => ({
+                    const childLocalWords: LocalWord[] = children.map((c) => ({
                         word_id: c.id || c.word_id,
                         word_text: c.word || c.word_text || '',
                         word_meaning: c.meaning || c.word_meaning || '-',
@@ -237,7 +168,7 @@ export default function WordSelectionPanel({
                         word_popularity: c.word_popularity || 0,
                         children_count: c.children_count || 0
                     }))
-                    
+
                     // Avoid duplicates
                     const existingIds = new Set(list.map(w => w.word_id))
                     const newChildren = childLocalWords.filter(c => !existingIds.has(c.word_id))
@@ -273,8 +204,8 @@ export default function WordSelectionPanel({
             {units.filter(u => selectedUnitIds.includes(u.unit_id)).map((unit) => {
                 const rootsOriginal: Word[] = []
                 const rootsCustom: Word[] = []
-                const unitWordsOriginal = (unit.unit_words?.original || []) 
-                const unitWordsCustom = (unit.unit_words?.custom  || []) 
+                const unitWordsOriginal = (unit.unit_words?.original || [])
+                const unitWordsCustom = (unit.unit_words?.custom || [])
 
                 unitWordsOriginal.forEach((w) => {
                     const rootWord: Word = {
@@ -321,7 +252,8 @@ export default function WordSelectionPanel({
                                 <Table>
                                     <TableBody>
                                         {rootsOriginal.map((root) => {
-                                            const children = childrenCache.get(root.word_id) || []
+                                            const unitData = data[unit.unit_id] || []
+                                            const children = unitData.filter(w => w.word_parent_id === root.word_id)
                                             const isLoading = loadingChildren.has(root.word_id)
                                             const hasChildren = children.length > 0
                                             const childrenCount = root.children_count ?? 0
@@ -332,7 +264,7 @@ export default function WordSelectionPanel({
                                                     {renderRow(root, unit, 1)}
                                                     {expandedChildGroups.has(root.word_id) && hasChildren && (
                                                         <>
-                                                            {children.map((c) => renderRow(c, unit, 1))}
+                                                            {children.map((c) => renderRow(c, unit, 3))}
                                                             <TableRow className="border-b border-gray-700">
                                                                 <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
                                                                     <button
@@ -374,10 +306,11 @@ export default function WordSelectionPanel({
                                             )
                                         })}
                                         {rootsCustom.map((root) => {
-                                            const children = childrenCache.get(root.word_id) || []
+                                            const unitData = data[unit.unit_id] || []
+                                            const children = unitData.filter(w => w.word_parent_id === root.word_id)
                                             const isLoading = loadingChildren.has(root.word_id)
                                             const hasChildren = children.length > 0
-                                            const childrenCount = (root as any).children_count ?? 0
+                                            const childrenCount = (root).children_count ?? 0
                                             const hasChildrenFromAPI = childrenCount > 0
 
                                             return (
@@ -385,7 +318,7 @@ export default function WordSelectionPanel({
                                                     {renderRow(root, unit, 2)}
                                                     {expandedChildGroups.has(root.word_id) && hasChildren && (
                                                         <>
-                                                            {children.map((c) => renderRow(c, unit, 2))}
+                                                            {children.map((c) => renderRow(c, unit, 3))}
                                                             <TableRow className="border-b border-gray-700">
                                                                 <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
                                                                     <button

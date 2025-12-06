@@ -115,16 +115,7 @@ export type Unit = {
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: {
-                word_id: string;
-                word_text?: string;
-                word?: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                lesson_ids?: string[];
-                lesson_names?: string[];
-            }[]
+            children_count: number;
         }[]
         custom: {
             word_id: string;
@@ -133,16 +124,7 @@ export type Unit = {
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: {
-                word_id: string;
-            word_text?: string;
-            word?: string;
-            word_meaning?: string;
-            word_ipa?: string;
-            word_popularity?: number;
-            lesson_ids?: string[];
-            lesson_names?: string[];
-            }[]
+            children_count: number;
         }[]
     }
 }
