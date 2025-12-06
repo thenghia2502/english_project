@@ -12,7 +12,7 @@ interface WordListUnit {
     unit_id: string
     unit_name: string
     unit_title?: string
-    words: {
+    unit_words: {
         original: {
             word_id: string;
             word_text: string;
@@ -20,16 +20,7 @@ interface WordListUnit {
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: {
-                word_id: string;
-                word_text?: string;
-                word?: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                lesson_ids?: string[];
-                lesson_names?: string[];
-            }[]
+            children_count: number;
         }[]
         custom: {
             word_id: string;
@@ -38,23 +29,14 @@ interface WordListUnit {
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: {
-                word_id: string;
-                word_text?: string;
-                word?: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                lesson_ids?: string[];
-                lesson_names?: string[];
-            }[]
+            children_count: number;
         }[]
     }
 }
 
 interface WordSelectionPanelProps {
     units: WordListUnit[] | {
-        words: {
+        unit_words: {
             original: {
                 word_id: string;
                 word_text: string;
@@ -62,16 +44,7 @@ interface WordSelectionPanelProps {
                 word_ipa?: string;
                 word_popularity?: number;
                 word_parent_id?: string | null;
-                children?: {
-                    word_id: string;
-                    word_text?: string;
-                    word?: string;
-                    word_meaning?: string;
-                    word_ipa?: string;
-                    word_popularity?: number;
-                    lesson_ids?: string[];
-                    lesson_names?: string[];
-                }[]
+                children_count: number;
             }[]
             custom: {
                 word_id: string;
@@ -80,16 +53,7 @@ interface WordSelectionPanelProps {
                 word_ipa?: string;
                 word_popularity?: number;
                 word_parent_id?: string | null;
-                children?: {
-                    word_id: string;
-                    word_text?: string;
-                    word?: string;
-                    word_meaning?: string;
-                    word_ipa?: string;
-                    word_popularity?: number;
-                    lesson_ids?: string[];
-                    lesson_names?: string[];
-                }[]
+                children_count: number;
             }[]
         }
         unit_id: string;
@@ -151,16 +115,7 @@ export default function WordSelectionPanel({
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: {
-                word_id: string;
-                word_text?: string;
-                word?: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                lesson_ids?: string[];
-                lesson_names?: string[];
-            }[]
+            children_count: number;
         }[]
         custom: {
             word_id: string;
@@ -169,21 +124,21 @@ export default function WordSelectionPanel({
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: {
-                word_id: string;
-                word_text?: string;
-                word?: string;
-                word_meaning?: string;
-                word_ipa?: string;
-                word_popularity?: number;
-                lesson_ids?: string[];
-                lesson_names?: string[];
-            }[]
+            children_count: number;
         }[]
     }) => {
         setData((prev) => {
-            const prevListOriginal = prev[unitId] ?? (unitWords?.original ?? []).map((w) => ({ ...w, selected: false }))
-            const prevListCustom = prev[unitId] ?? (unitWords?.custom ?? []).map((w) => ({ ...w, selected: false }))
+            // If data already exists for this unit, update it
+            if (prev[unitId]) {
+                const updated = prev[unitId].map((w: LocalWord) => 
+                    w.word_id === wordId ? { ...w, selected: !w.selected } : w
+                )
+                return { ...prev, [unitId]: updated }
+            }
+
+            // If not yet created, initialize from unitWords
+            const prevListOriginal = (unitWords?.original ?? []).map((w) => ({ ...w, selected: false }))
+            const prevListCustom = (unitWords?.custom ?? []).map((w) => ({ ...w, selected: false }))
             const prevList = prevListOriginal.concat(prevListCustom)
             const updated = prevList.map((w: LocalWord) => (w.word_id === wordId ? { ...w, selected: !w.selected } : w))
             return { ...prev, [unitId]: updated }
@@ -195,14 +150,14 @@ export default function WordSelectionPanel({
 
         return (
             <TableRow
-                key={word.word_id}
+                key={word.word_id || word.id}
                 className={`hover:bg-gray-50 text-gray-900 flex ${type === 1 ? '' : 'bg-gray-200'}`}
-                onClick={() => toggleWordSelection(unit.unit_id, word.word_id, unit.words)}
+                onClick={() => toggleWordSelection(unit.unit_id, word.word_id, unit.unit_words)}
             >
                 <TableCell className="px-4 py-3 w-1/3">
                     <div className={`flex items-center space-x-3 ${word.word_parent_id ? 'pl-2.5' : ''}`}>
                         <div>
-                            <div className="font-medium text-gray-900">{word.word_text}</div>
+                            <div className="font-medium text-gray-900">{word.word_text || word.word}</div>
                             <div className="text-sm text-gray-500">{word.word_ipa}</div>
                         </div>
                     </div>
@@ -229,11 +184,86 @@ export default function WordSelectionPanel({
         )
     }
     const [modalUnitId, setModalUnitId] = useState<string | null>(null)
+    const [childrenCache, setChildrenCache] = useState<Map<string,
+        {
+            id: string,
+            "word": string,
+            "meaning": string,
+            "ipa": string,
+            "parent_id": string,
+        }[]
+    >>(new Map())
+    const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set())
+
     const handleOpenModalAddWords = (unitId: string) => {
         setModalUnitId(unitId)
     }
     const handleCloseModalAddWords = () => {
         setModalUnitId(null)
+    }
+
+    const fetchChildren = async (wordId: string, unitId: string) => {
+        if (childrenCache.has(wordId) || loadingChildren.has(wordId)) {
+            return
+        }
+
+        setLoadingChildren(prev => new Set(prev).add(wordId))
+
+        try {
+            const response = await fetch(`/api/proxy/words/child-of?parentId=${wordId}`)
+            if (!response.ok) throw new Error('Failed to fetch children')
+
+            const children = await response.json()
+
+            setChildrenCache(prev => {
+                const newMap = new Map(prev)
+                newMap.set(wordId, children || [])
+                return newMap
+            })
+
+            // Add children to data so they can be selected
+            if (Array.isArray(children) && children.length > 0) {
+                setData(prev => {
+                    const list = prev[unitId] || []
+                    const childLocalWords: LocalWord[] = children.map((c: any) => ({
+                        word_id: c.id || c.word_id,
+                        word_text: c.word || c.word_text || '',
+                        word_meaning: c.meaning || c.word_meaning || '-',
+                        word_ipa: c.ipa || c.word_ipa || '-',
+                        word_parent_id: wordId,
+                        selected: false,
+                        done: false,
+                        belong: '',
+                        word_popularity: c.word_popularity || 0,
+                        children_count: c.children_count || 0
+                    }))
+                    
+                    // Avoid duplicates
+                    const existingIds = new Set(list.map(w => w.word_id))
+                    const newChildren = childLocalWords.filter(c => !existingIds.has(c.word_id))
+                    const n = { ...prev, [unitId]: [...list, ...newChildren] }
+                    console.log('Updated data with children:', n)
+                    return { ...prev, [unitId]: [...list, ...newChildren] }
+                })
+            }
+        } catch (error) {
+            console.error('Error fetching children:', error)
+        } finally {
+            setLoadingChildren(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(wordId)
+                return newSet
+            })
+        }
+    }
+
+    const handleExpandChildren = async (wordId: string, unitId: string) => {
+        await fetchChildren(wordId, unitId)
+        setExpandedChildGroups(s => {
+            const ns = new Set(s)
+            ns.add(wordId)
+            return ns
+        })
     }
     return (
         <>
@@ -241,14 +271,12 @@ export default function WordSelectionPanel({
                 <ModalAddWords unitId={modalUnitId} onClose={handleCloseModalAddWords} />
             )}
             {units.filter(u => selectedUnitIds.includes(u.unit_id)).map((unit) => {
-                // Normalize children from API (words with embedded children array)
-                const childrenMap = new Map<string, Word[]>()
                 const rootsOriginal: Word[] = []
                 const rootsCustom: Word[] = []
-                const unitWordsOriginal = (unit.words.original || []) as IncomingWord[]
-                const unitWordsCustom = (unit.words.custom || []) as IncomingWord[]
-                unitWordsOriginal.forEach((w: IncomingWord) => {
-                    // Treat item as root
+                const unitWordsOriginal = (unit.unit_words?.original || []) 
+                const unitWordsCustom = (unit.unit_words?.custom  || []) 
+
+                unitWordsOriginal.forEach((w) => {
                     const rootWord: Word = {
                         word_id: w.word_id,
                         word_text: w.word_text ?? '',
@@ -256,28 +284,14 @@ export default function WordSelectionPanel({
                         word_ipa: w.word_ipa,
                         word_parent_id: undefined,
                         word_popularity: w.word_popularity,
-                        lesson_ids: w.lesson_ids,
-                        lesson_names: w.lesson_names
+                        // lesson_ids: w.lesson_ids,
+                        // lesson_names: w.lesson_names,
+                        children_count: w.children_count
                     }
                     rootsOriginal.push(rootWord)
-
-                    // If API provides children array, map them as child words
-                    if (Array.isArray(w.children) && w.children.length > 0) {
-                        const list: Word[] = w.children.map((c: ApiChildWord) => ({
-                            word_id: c.word_id,
-                            word_text: c.word_text ?? '',
-                            word_meaning: c.word_meaning ?? '',
-                            word_ipa: c.word_ipa,
-                            word_parent_id: w.word_id,
-                            word_popularity: c.word_popularity,
-                            lesson_ids: c.lesson_ids,
-                            lesson_names: c.lesson_names
-                        }))
-                        childrenMap.set(w.word_id, list)
-                    }
                 })
-                unitWordsCustom.forEach((w: IncomingWord) => {
-                    // Treat item as root
+
+                unitWordsCustom.forEach((w) => {
                     const rootWord: Word = {
                         word_id: w.word_id,
                         word_text: w.word_text ?? '',
@@ -285,71 +299,16 @@ export default function WordSelectionPanel({
                         word_ipa: w.word_ipa,
                         word_parent_id: undefined,
                         word_popularity: w.word_popularity,
-                        lesson_ids: w.lesson_ids,
-                        lesson_names: w.lesson_names
+                        // lesson_ids: w.lesson_ids,
+                        // lesson_names: w.lesson_names,
+                        children_count: w.children_count
                     }
                     rootsCustom.push(rootWord)
-
-                    // If API provides children array, map them as child words
-                    if (Array.isArray(w.children) && w.children.length > 0) {
-                        const list: Word[] = w.children.map((c: ApiChildWord) => ({
-                            word_id: c.word_id,
-                            word_text: c.word_text ?? '',
-                            word_meaning: c.word_meaning ?? '',
-                            word_ipa: c.word_ipa,
-                            word_parent_id: w.word_id,
-                            word_popularity: c.word_popularity,
-                            lesson_ids: c.lesson_ids,
-                            lesson_names: c.lesson_names
-                        }))
-                        childrenMap.set(w.word_id, list)
-                    }
-                })
-                // Backward compatibility: include legacy children linked by word_parent_id
-                unitWordsOriginal.forEach((w: IncomingWord) => {
-                    if (w.word_parent_id) {
-                        if (!childrenMap.has(w.word_parent_id)) childrenMap.set(w.word_parent_id, [])
-                        const list = childrenMap.get(w.word_parent_id)!
-                        // Avoid duplicate if already from new children array
-                        if (!list.find((x) => x.word_id === w.word_id)) {
-                            list.push({
-                                word_id: w.word_id,
-                                word_text: w.word_text ?? '',
-                                word_meaning: w.word_meaning ?? '',
-                                word_ipa: w.word_ipa,
-                                word_parent_id: w.word_parent_id,
-                                word_popularity: w.word_popularity,
-                                lesson_ids: w.lesson_ids,
-                                lesson_names: w.lesson_names
-                            } as Word)
-                        }
-                    }
                 })
 
-                unitWordsCustom.forEach((w: IncomingWord) => {
-                    if (w.word_parent_id) {
-                        if (!childrenMap.has(w.word_parent_id)) childrenMap.set(w.word_parent_id, [])
-                        const list = childrenMap.get(w.word_parent_id)!
-                        // Avoid duplicate if already from new children array
-                        if (!list.find((x) => x.word_id === w.word_id)) {
-                            list.push({
-                                word_id: w.word_id,
-                                word_text: w.word_text ?? '',
-                                word_meaning: w.word_meaning ?? '',
-                                word_ipa: w.word_ipa,
-                                word_parent_id: w.word_parent_id,
-                                word_popularity: w.word_popularity,
-                                lesson_ids: w.lesson_ids,
-                                lesson_names: w.lesson_names
-                            } as Word)
-                        }
-                    }
-                })
-
-                // Sort roots and children for predictable order
+                // Sort roots for predictable order
                 rootsOriginal.sort((a, b) => a.word_text.localeCompare(b.word_text))
                 rootsCustom.sort((a, b) => a.word_text.localeCompare(b.word_text))
-                childrenMap.forEach((list) => list.sort((a, b) => a.word_text.localeCompare(b.word_text)))
 
                 return (
                     <div key={unit.unit_id} className="mb-6">
@@ -362,125 +321,107 @@ export default function WordSelectionPanel({
                                 <Table>
                                     <TableBody>
                                         {rootsOriginal.map((root) => {
-                                            const children = childrenMap.get(root.word_id) || []
+                                            const children = childrenCache.get(root.word_id) || []
+                                            const isLoading = loadingChildren.has(root.word_id)
+                                            const hasChildren = children.length > 0
+                                            const childrenCount = root.children_count ?? 0
+                                            const hasChildrenFromAPI = childrenCount > 0
 
                                             return (
-                                                <React.Fragment key={root.word_id}>
+                                                <React.Fragment key={root.word_id || root.id}>
                                                     {renderRow(root, unit, 1)}
-                                                    {children.length > 0 && (
+                                                    {expandedChildGroups.has(root.word_id) && hasChildren && (
                                                         <>
-                                                            {expandedChildGroups.has(root.word_id) ? (
-                                                                // Expanded: show all children + collapse button
-                                                                <>
-                                                                    {children.map((c) => renderRow(c, unit, 1))}
-                                                                    <TableRow className="border-b border-gray-700">
-                                                                        <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation()
-                                                                                    setExpandedChildGroups((s) => {
-                                                                                        const ns = new Set(s)
-                                                                                        ns.delete(root.word_id)
-                                                                                        return ns
-                                                                                    })
-                                                                                }}
-                                                                                className="text-sm text-gray-600 hover:underline"
-                                                                            >
-                                                                                Ẩn bớt
-                                                                            </button>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                </>
-                                                            ) : (
-                                                                // Collapsed: show only first child and a button to reveal remaining
-                                                                <>
-                                                                    {children[0] && renderRow(children[0], unit, 1)}
-                                                                    {children.length > 1 && (
-                                                                        <TableRow className="border-b border-gray-700">
-                                                                            <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation()
-                                                                                        setExpandedChildGroups((s) => {
-                                                                                            const ns = new Set(s)
-                                                                                            ns.add(root.word_id)
-                                                                                            return ns
-                                                                                        })
-                                                                                    }}
-                                                                                    className="text-sm text-blue-600 hover:underline"
-                                                                                >
-                                                                                    Hiện thêm {children.length - 1} từ
-                                                                                </button>
-                                                                            </TableCell>
-                                                                        </TableRow>
-                                                                    )}
-                                                                </>
-                                                            )}
+                                                            {children.map((c) => renderRow(c, unit, 1))}
+                                                            <TableRow className="border-b border-gray-700">
+                                                                <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            setExpandedChildGroups((s) => {
+                                                                                const ns = new Set(s)
+                                                                                ns.delete(root.word_id || root.id)
+                                                                                return ns
+                                                                            })
+                                                                        }}
+                                                                        className="text-sm text-gray-600 hover:underline"
+                                                                    >
+                                                                        Ẩn bớt
+                                                                    </button>
+                                                                </TableCell>
+                                                            </TableRow>
                                                         </>
+                                                    )}
+                                                    {!expandedChildGroups.has(root.word_id || root.id) && hasChildrenFromAPI && (
+                                                        <TableRow className="border-b border-gray-700">
+                                                            <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        handleExpandChildren(root.word_id, unit.unit_id)
+                                                                    }}
+                                                                    disabled={isLoading}
+                                                                    className="text-sm text-blue-600 hover:underline disabled:text-gray-400"
+                                                                >
+                                                                    {isLoading ? 'Đang tải...' : 'Xem từ liên quan'}
+                                                                </button>
+                                                            </TableCell>
+                                                        </TableRow>
                                                     )}
                                                 </React.Fragment>
                                             )
                                         })}
                                         {rootsCustom.map((root) => {
-                                            const children = childrenMap.get(root.word_id) || []
+                                            const children = childrenCache.get(root.word_id) || []
+                                            const isLoading = loadingChildren.has(root.word_id)
+                                            const hasChildren = children.length > 0
+                                            const childrenCount = (root as any).children_count ?? 0
+                                            const hasChildrenFromAPI = childrenCount > 0
 
                                             return (
                                                 <React.Fragment key={root.word_id}>
                                                     {renderRow(root, unit, 2)}
-                                                    {children.length > 0 && (
+                                                    {expandedChildGroups.has(root.word_id) && hasChildren && (
                                                         <>
-                                                            {expandedChildGroups.has(root.word_id) ? (
-                                                                // Expanded: show all children + collapse button
-                                                                <>
-                                                                    {children.map((c) => renderRow(c, unit, 2))}
-                                                                    <TableRow className="border-b border-gray-700">
-                                                                        <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation()
-                                                                                    setExpandedChildGroups((s) => {
-                                                                                        const ns = new Set(s)
-                                                                                        ns.delete(root.word_id)
-                                                                                        return ns
-                                                                                    })
-                                                                                }}
-                                                                                className="text-sm text-gray-600 hover:underline"
-                                                                            >
-                                                                                Ẩn bớt
-                                                                            </button>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                </>
-                                                            ) : (
-                                                                // Collapsed: show only first child and a button to reveal remaining
-                                                                <>
-                                                                    {children[0] && renderRow(children[0], unit, 2)}
-                                                                    {children.length > 1 && (
-                                                                        <TableRow className="border-b border-gray-700">
-                                                                            <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation()
-                                                                                        setExpandedChildGroups((s) => {
-                                                                                            const ns = new Set(s)
-                                                                                            ns.add(root.word_id)
-                                                                                            return ns
-                                                                                        })
-                                                                                    }}
-                                                                                    className="text-sm text-blue-600 hover:underline"
-                                                                                >
-                                                                                    Hiện thêm {children.length - 1} từ
-                                                                                </button>
-                                                                            </TableCell>
-                                                                        </TableRow>
-                                                                    )}
-                                                                </>
-                                                            )}
+                                                            {children.map((c) => renderRow(c, unit, 2))}
+                                                            <TableRow className="border-b border-gray-700">
+                                                                <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation()
+                                                                            setExpandedChildGroups((s) => {
+                                                                                const ns = new Set(s)
+                                                                                ns.delete(root.word_id)
+                                                                                return ns
+                                                                            })
+                                                                        }}
+                                                                        className="text-sm text-gray-600 hover:underline"
+                                                                    >
+                                                                        Ẩn bớt
+                                                                    </button>
+                                                                </TableCell>
+                                                            </TableRow>
                                                         </>
+                                                    )}
+                                                    {!expandedChildGroups.has(root.word_id) && hasChildrenFromAPI && (
+                                                        <TableRow className="border-b border-gray-700">
+                                                            <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        handleExpandChildren(root.word_id, unit.unit_id)
+                                                                    }}
+                                                                    disabled={isLoading}
+                                                                    className="text-sm text-blue-600 hover:underline disabled:text-gray-400"
+                                                                >
+                                                                    {isLoading ? 'Đang tải...' : 'Xem từ liên quan'}
+                                                                </button>
+                                                            </TableCell>
+                                                        </TableRow>
                                                     )}
                                                 </React.Fragment>
                                             )

@@ -1,5 +1,7 @@
 export interface Word {
     word_id: string
+    id?: string
+    word?: string
     word_text: string
     word_meaning: string
     word_ipa?: string
@@ -11,6 +13,7 @@ export interface Word {
     lesson_ids?: string[]
     lesson_names?: string[]
     children?: Word[]
+    children_count: number
 }
 
 export interface Lesson {
@@ -104,7 +107,7 @@ export type Unit = {
     unit_id: string
     unit_name: string
     unit_title?: string
-    words: {
+    unit_words: {
         original: {
             word_id: string;
             word_text: string;

@@ -42,16 +42,16 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
     // ===== HELPER: Fetch words from unit_ids =====
     const fetchAndSetUnits = useCallback(async (unitIds: string[]) => {
-        interface ApiChildWord {
-            word_id: string;
-            word_text?: string;
-            word?: string;
-            word_meaning?: string;
-            word_ipa?: string;
-            word_popularity?: number;
-            lesson_ids?: string[];
-            lesson_names?: string[];
-        }
+        // interface ApiChildWord {
+        //     word_id: string;
+        //     word_text?: string;
+        //     word?: string;
+        //     word_meaning?: string;
+        //     word_ipa?: string;
+        //     word_popularity?: number;
+        //     lesson_ids?: string[];
+        //     lesson_names?: string[];
+        // }
 
         interface ApiWordData {
             word_id: string;
@@ -60,7 +60,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             word_ipa?: string;
             word_popularity?: number;
             word_parent_id?: string | null;
-            children?: ApiChildWord[];
+            children_count: number;
         }
 
         interface ApiUnitData {
@@ -99,14 +99,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     word_ipa: w.word_ipa,
                     word_popularity: w.word_popularity || 0,
                     word_parent_id: undefined,
-                    children: Array.isArray(w.children) ? w.children.map((c: ApiChildWord): Word => ({
-                        word_id: c.word_id,
-                        word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
-                        word_meaning: c.word_meaning ?? '-',
-                        word_ipa: c.word_ipa ?? '-',
-                        word_popularity: c.word_popularity ?? 0,
-                        word_parent_id: undefined
-                    })) : []
+                    children_count: w.children_count
                 }))
 
                 // Roots for UI (unit.words contains only roots)
@@ -117,19 +110,12 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     word_ipa: w.word_ipa,
                     word_popularity: w.word_popularity || 0,
                     word_parent_id: undefined,
-                    children: Array.isArray(w.children) ? w.children.map((c: ApiChildWord): Word => ({
-                        word_id: c.word_id,
-                        word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
-                        word_meaning: c.word_meaning ?? '-',
-                        word_ipa: c.word_ipa ?? '-',
-                        word_popularity: c.word_popularity ?? 0,
-                        word_parent_id: undefined
-                    })) : []
+                    children_count: w.children_count
                 }))
                 transformedUnits.push({
                         unit_id: unitData.unit_id,
                         unit_name: unitData.unit_name,
-                        words: {
+                        unit_words: {
                             original: root_original,
                             custom: root_custom
                         }
@@ -153,25 +139,26 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                         word_parent_id: undefined,
                         selected: false,
                         done: false,
-                        belong: ''
+                        belong: '',
+                        children_count: w.children_count
                     })
 
-                    // Push children if any
-                    if (Array.isArray(w.children) && w.children.length > 0) {
-                        w.children.forEach((c: ApiChildWord) => {
-                            list.push({
-                                word_id: c.word_id,
-                                word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
-                                word_meaning: c.word_meaning ?? '-',
-                                word_ipa: c.word_ipa ?? '-',
-                                word_popularity: c.word_popularity ?? 0,
-                                word_parent_id: w.word_id,
-                                selected: false,
-                                done: false,
-                                belong: ''
-                            })
-                        })
-                    }
+                    // // Push children if any
+                    // if (Array.isArray(w.children) && w.children.length > 0) {
+                    //     w.children.forEach((c: ApiChildWord) => {
+                    //         list.push({
+                    //             word_id: c.word_id,
+                    //             word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
+                    //             word_meaning: c.word_meaning ?? '-',
+                    //             word_ipa: c.word_ipa ?? '-',
+                    //             word_popularity: c.word_popularity ?? 0,
+                    //             word_parent_id: w.word_id,
+                    //             selected: false,
+                    //             done: false,
+                    //             belong: ''
+                    //         })
+                    //     })
+                    // }
                 })
 
                 // Deduplicate by word_id to avoid duplicate keys downstream
