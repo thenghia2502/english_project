@@ -42,16 +42,6 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
     // ===== HELPER: Fetch words from unit_ids =====
     const fetchAndSetUnits = useCallback(async (unitIds: string[]) => {
-        // interface ApiChildWord {
-        //     word_id: string;
-        //     word_text?: string;
-        //     word?: string;
-        //     word_meaning?: string;
-        //     word_ipa?: string;
-        //     word_popularity?: number;
-        //     lesson_ids?: string[];
-        //     lesson_names?: string[];
-        // }
 
         interface ApiWordData {
             word_id: string;

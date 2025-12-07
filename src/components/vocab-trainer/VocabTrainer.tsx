@@ -81,15 +81,15 @@ export default function VocabTrainer() {
     // Computed values
     // Chỉ hiển thị loading khi thực sự cần load dữ liệu ban đầu, không phải khi update
     // Sau khi đã có dữ liệu lần đầu, không bao giờ hiển thị skeleton nữa
-    const isPageLoading = !disableSkeleton && 
-                          !hasInitialData && 
-                          vocabularyData.length === 0 && 
-                          (lessonLoading || isTransformingData) && 
-                          !updatingLessonRef.current && 
-                          !isUpdatingLesson
+    const isPageLoading = !disableSkeleton &&
+        !hasInitialData &&
+        vocabularyData.length === 0 &&
+        (lessonLoading || isTransformingData) &&
+        !updatingLessonRef.current &&
+        !isUpdatingLesson
     const error = lessonError?.message || transformError
     const currentWord = vocabularyData[currentIndex] || null
-    
+
     // Debug logging
     useEffect(() => {
         console.log('🔍 Loading states:', {
@@ -144,7 +144,7 @@ export default function VocabTrainer() {
                 unit_ids: unit_ids,
                 words: wordsPayload,
             })
-            
+
             // Không cần update lại vocabularyData từ response vì data local đã chính xác
             // Cache đã được cập nhật trong mutation onSuccess
         } catch (error) {
@@ -198,16 +198,16 @@ export default function VocabTrainer() {
                     selectedLesson.lesson_words.map(async (cw) => {
                         const id = String(cw.word_id ?? '')
                         const wordText = String(cw.word)
-                        
+
                         // Try to get audio URL, fallback to local or empty string
                         let audioUrl = ''
                         // try {
-                            audioUrl = await getAudioUrl(wordText, dialect)
+                        audioUrl = await getAudioUrl(wordText, dialect)
                         // } catch {
                         //     // Fallback to local audio if API fails
                         //     audioUrl = getAudioUrlLocal(wordText, dialect) || ''
                         // }
-                        
+
                         return {
                             word_id: id,
                             word: wordText,
@@ -227,7 +227,7 @@ export default function VocabTrainer() {
                         }
                     })
                 )
-                
+
                 setVocabularyData(transformedData)
             } catch (error) {
                 console.error("Error transforming course data:", error)
@@ -300,24 +300,28 @@ export default function VocabTrainer() {
     // Hàm reset progress của tất cả các từ
     const handleRestart = useCallback(() => {
         console.log('🔄 Restarting course - resetting all word progress to 0')
-        
+
         // Reset progress của tất cả các từ về 0
         const resetData = vocabularyData.map(word => ({
             ...word,
             word_progress: '0'
         }))
-        
+
         setVocabularyData(resetData)
         setCurrentIndex(0)
         setIsPlaying(false)
         setIsLooping(false)
-        
+
         // Delay nhỏ để state update xong, sau đó bắt đầu phát
         setTimeout(() => {
             audioManager.handleAudioToggle()
         }, 100)
     }, [vocabularyData, audioManager])
 
+    const openOxford = (text: string) => {
+        const url = `https://www.oxfordlearnersdictionaries.com/definition/english/${encodeURIComponent(text)}`;
+        window.open(url, "_blank");
+    };
     // Error handling
     if (!lessonId) {
         return (
@@ -387,10 +391,10 @@ export default function VocabTrainer() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
             <TopNavigation lessonName={selectedLesson?.lesson_name} />
-            
+
             <main className="mx-auto min-h-[52rem] px-4 py-8 sm:px-6 lg:pb-8 lg:pt-16 flex flex-col space-y-5">
                 <div className="my-3 flex justify-between">
-                    <TrainerControls 
+                    <TrainerControls
                         checked={checked}
                         setChecked={setChecked}
                         dialect={dialect}
@@ -398,7 +402,7 @@ export default function VocabTrainer() {
                         isLooping={isLooping}
                         isPlaying={isPlaying}
                     />
-                    
+
                     <div className="flex-shrink-0">
                         <AudioControls
                             isLooping={isLooping}
@@ -414,16 +418,17 @@ export default function VocabTrainer() {
                 </div>
 
                 <Card className="border-none shadow-lg bg-white relative">
-                    <ProgressBadge 
-                        currentWord={currentWord} 
-                        lastShownWord={lastShownWordRef.current} 
+                    <ProgressBadge
+                        currentWord={currentWord}
+                        lastShownWord={lastShownWordRef.current}
                     />
-                    
+
                     <CardContent className="p-6 h-fit">
-                        <div className="mb-6 flex items-center justify-between bg-gray-50 rounded-lg p-4 h-[30rem]">
+                        <div className="mb-6 flex items-center justify-between bg-gray-50 rounded-lg p-4 h-[30rem] relative">
                             <div className="w-full mx-4 md:mx-8 flex justify-center items-center">
                                 <VocabDisplay currentWord={currentWord} />
                             </div>
+                            <div className="absolute top-[100%] right-2 text-gray-500 transition-transform hover:-translate-y-0.5 hover:cursor-pointer" onClick={() => openOxford(currentWord.word)}>oxford</div>
                         </div>
                     </CardContent>
                 </Card>

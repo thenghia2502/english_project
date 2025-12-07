@@ -18,6 +18,11 @@ export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
     const wordStart = ipaRounds
     const bothStart = ipaRounds + wordRounds
 
+    const openCambridge = () => {
+        const url = `https://dictionary.cambridge.org/dictionary/english/${encodeURIComponent(currentWord.word)}`;
+        window.open(url, "_blank");
+    };
+
     let phase: 1 | 2 | 3 = 1
     if (readCount <= wordStart) {
         phase = 1 // IPA
@@ -28,21 +33,21 @@ export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
     }
 
     if (phase === 1) {
-        return <span className="ipa-text text-[10rem] text-blue-600">{currentWord.word_ipa}</span>
+        return <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word_ipa}</span>
     }
-    
+
     if (phase === 2) {
         return (
             <span className="text-7xl text-gray-900">
-                <span className="ipa-text text-[10rem] text-blue-600">{currentWord.word}</span>
+                <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word}</span>
             </span>
         )
     }
-    
+
     return (
         <span className="flex flex-col">
-            <span className="ipa-text text-[10rem] text-blue-600 text-center">{currentWord.word}</span>
-            <span className="ipa-text text-[10rem] text-blue-600 ml-2">{currentWord.word_ipa}</span>
+            <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 text-center hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word}</span>
+            <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 ml-2 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word_ipa}</span>
         </span>
     )
 }

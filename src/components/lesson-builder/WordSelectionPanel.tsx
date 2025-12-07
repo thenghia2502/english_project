@@ -115,6 +115,7 @@ export default function WordSelectionPanel({
         )
     }
     const [modalUnitId, setModalUnitId] = useState<string | null>(null)
+    const [modalUnitTitle, setModalUnitTitle] = useState<string | null>(null)
     const [childrenCache, setChildrenCache] = useState<Map<string,
         {
             id: string,
@@ -126,11 +127,13 @@ export default function WordSelectionPanel({
     >>(new Map())
     const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set())
 
-    const handleOpenModalAddWords = (unitId: string) => {
+    const handleOpenModalAddWords = (unitId: string, unitTitle: string) => {
         setModalUnitId(unitId)
+        setModalUnitTitle(unitTitle)
     }
     const handleCloseModalAddWords = () => {
         setModalUnitId(null)
+        setModalUnitTitle(null)
     }
 
     const fetchChildren = async (wordId: string, unitId: string) => {
@@ -198,8 +201,8 @@ export default function WordSelectionPanel({
     }
     return (
         <>
-            {modalUnitId && (
-                <ModalAddWords unitId={modalUnitId} onClose={handleCloseModalAddWords} />
+            {modalUnitId && modalUnitTitle && (
+                <ModalAddWords unitId={modalUnitId} unitTitle={modalUnitTitle} onClose={handleCloseModalAddWords} />
             )}
             {units.filter(u => selectedUnitIds.includes(u.unit_id)).map((unit) => {
                 const rootsOriginal: Word[] = []
@@ -245,7 +248,7 @@ export default function WordSelectionPanel({
                     <div key={unit.unit_id} className="mb-6">
                         <div className="flex justify-between">
                             <h3 className="text-md font-semibold text-gray-800 mb-3">{unit.unit_name} từ</h3>
-                            <span className="text-black text-sm cursor-pointer" onClick={() => handleOpenModalAddWords(unit.unit_id)}>thêm từ</span>
+                            <span className="text-black text-sm cursor-pointer italic hover:underline" onClick={() => handleOpenModalAddWords(unit.unit_id, unit.unit_name)}>thêm từ</span>
                         </div>
                         <Card className="bg-white shadow-sm border border-gray-200">
                             <CardContent className="p-0">
