@@ -43,6 +43,7 @@ interface WordSelectionPanelProps {
     expandedChildGroups: Set<string>
     setData: React.Dispatch<React.SetStateAction<{ [key: string]: LocalWord[] }>>
     setExpandedChildGroups: React.Dispatch<React.SetStateAction<Set<string>>>
+    onWordsAdded?: () => void | Promise<void>
     // onOpenModalAddWords: () => void
 }
 
@@ -53,6 +54,7 @@ export default function WordSelectionPanel({
     expandedChildGroups,
     setData,
     setExpandedChildGroups,
+    onWordsAdded,
     // onOpenModalAddWords
 }: WordSelectionPanelProps) {
 
@@ -202,7 +204,12 @@ export default function WordSelectionPanel({
     return (
         <>
             {modalUnitId && modalUnitTitle && (
-                <ModalAddWords unitId={modalUnitId} unitTitle={modalUnitTitle} onClose={handleCloseModalAddWords} />
+                <ModalAddWords 
+                    unitId={modalUnitId} 
+                    unitTitle={modalUnitTitle} 
+                    onClose={handleCloseModalAddWords}
+                    onAdded={onWordsAdded}
+                />
             )}
             {units.filter(u => selectedUnitIds.includes(u.unit_id)).map((unit) => {
                 const rootsOriginal: Word[] = []

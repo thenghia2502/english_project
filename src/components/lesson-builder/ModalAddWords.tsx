@@ -1,13 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Volume, Volume2, X } from "lucide-react"
+import { Volume2, X } from "lucide-react"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useGetUrlAudio } from "@/hooks/use-audios"
+import { useAddWordToUnit } from "@/hooks/use-add-word-to-unit"
 
-export default function ModalAddWords({ unitId, unitTitle, onClose }: { unitId: string, unitTitle: string, onClose: () => void }) {
+export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: { unitId: string, unitTitle: string, onClose: () => void, onAdded?: () => void | Promise<void> }) {
     const [rows, setRows] = useState<Array<{ id: string; text: string; meaning: string; ukIpa: string; usIpa: string }>>([
         { id: "", text: "", meaning: "", ukIpa: "", usIpa: "" }
     ])
@@ -16,6 +17,10 @@ export default function ModalAddWords({ unitId, unitTitle, onClose }: { unitId: 
 
     // Cache audio để tránh fetch lại nhiều lần
     const audioCache = useRef<Map<string, string>>(new Map())
+
+    // Hooks
+    const getAudio = useGetUrlAudio()
+    const { addWordToUnit, isLoading: isSubmitting } = useAddWordToUnit()
 
     // Khi unitId thay đổi, đồng bộ rows tương ứng
     useEffect(() => {
@@ -74,8 +79,8 @@ export default function ModalAddWords({ unitId, unitTitle, onClose }: { unitId: 
     })
     const removeRow = (idx: number) => setRows(prev => {
         const next = prev.filter((_, i) => i !== idx)
-        rowsByUnitRef.current[unitId] = next.length ? next : [{ id: "", text: "", meaning: "", ukIpa: "", usIpa: "" }]
-        return rowsByUnitRef.current[unitId]
+        rowsByUnitRef.current[unitId] = next
+        return next
     })
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -86,24 +91,27 @@ export default function ModalAddWords({ unitId, unitTitle, onClose }: { unitId: 
     }, [rows.length]);
 
     const handleSubmit = async () => {
-        try {
-            const res = await fetch('/api/proxy/words/add_word_to_unit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    wordId: rows[0].id,
-                    unitId: unitId
-                })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                onClose();
-            }
-        } catch (e) {
-            console.error("Error submitting words:", e);
+        if (isSubmitting) {
+            console.warn("Request is loading")
+            return
+        }
+
+        const validRows = rows.filter(r => (r.id && r.id.trim()) || (r.text && r.text.trim()))
+        if (validRows.length === 0) {
+            console.warn("No words to submit")
+            return
+        }
+
+        const success = await addWordToUnit({
+            wordIds: validRows.map(r => r.id),
+            unitId: unitId
+        }, { onSuccess: onAdded })
+
+        if (success) {
+            onClose()
         }
     }
-    const getAudio = useGetUrlAudio()
+
     const handlePlayMP3 = async (word: string, dialect: "uk" | "us") => {
         if (!word.trim()) {
             console.warn("No word to play");
@@ -260,10 +268,16 @@ export default function ModalAddWords({ unitId, unitTitle, onClose }: { unitId: 
                     </div>
                     <div className="mt-3 flex justify-between">
                         <Button variant="outline" className="hover:cursor-pointer transition-transform hover:-translate-y-0.5" onClick={addRow}>Thêm dòng</Button>
-                        <div className="text-sm text-gray-500">{rows.length} dòng</div>
+                        <div className="text-sm text-gray-500">{rows.filter(r => (r.id && r.id.trim()) || (r.text && r.text.trim())).length} dòng</div>
                     </div>
                     <div>
-                        <Button className="mt-4 float-right bg-blue-600 text-white hover:cursor-pointer transition-transform hover:-translate-y-0.5 " onClick={() => handleSubmit()}>Lưu từ</Button>
+                        <Button 
+                            className="mt-4 float-right bg-blue-600 text-white hover:cursor-pointer transition-transform hover:-translate-y-0.5" 
+                            onClick={() => handleSubmit()}
+                            disabled={isSubmitting || !rows.some(r => (r.id && r.id.trim()) || (r.text && r.text.trim()))}
+                        >
+                            {isSubmitting ? 'Đang lưu...' : 'Lưu từ'}
+                        </Button>
                     </div>
                 </div>
             </div>

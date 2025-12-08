@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Curriculum, CurriculumPagination } from '@/lib/types'
@@ -16,7 +17,7 @@ type Props = {
 export default function CurriculumOriginalList({ curriculumOriginal, searchQuery = '', serverPaginated, routerPush, onPageChange }: Props) {
   const PAGE_SIZE = curriculumOriginal?.limit ?? 16
   const [currentPage, setCurrentPage] = useState<number>(curriculumOriginal?.page ?? 1)
-  
+
   // Ensure items is always an array to avoid runtime errors
   const itemsFromProp: Curriculum[] = Array.isArray(curriculumOriginal?.items) ? curriculumOriginal!.items : []
 
@@ -32,7 +33,7 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
     if (!searchQuery.trim()) return true
     const searchLower = searchQuery.toLowerCase()
     return curriculum.name.toLowerCase().includes(searchLower) ||
-           curriculum.description?.toLowerCase().includes(searchLower)
+      curriculum.description?.toLowerCase().includes(searchLower)
   })
 
   // Use provided totalPages or calculate from items
@@ -75,45 +76,44 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
         {isPageLoading ? (
           <div className="col-span-full text-center py-20">Đang tải trang...</div>
         ) : (
-          paginated.map((curriculum) => {
-            return (
-              <div key={curriculum.curriculum_id} className="">
-                <Card className="bg-white shadow-sm border border-gray-200 relative">
-                  {/* Note: Removed delete button since curriculum_original shouldn't be deletable */}
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-semibold text-black">{curriculum.curriculum_name}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-600">{curriculum.description || 'Không có mô tả'}</p>
-                    <div className="my-2 flex items-center gap-3 text-sm text-gray-600">
-                      <span>{curriculum.list_level?.length || 0} trình độ</span>
-                      <span>{curriculum.units?.length || 0} bài học</span>
-                    </div>
-                    <div className='flex space-x-2'>
-                      <Button 
-                        className='bg-green-600 hover:bg-green-700 text-white flex-1' 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => routerPush(`/lesson/create?id=${curriculum.curriculum_id}`)}
-                      >
-                        Tạo bài học
-                      </Button>
-                      <Button 
-                        className='bg-blue-600 hover:bg-blue-700 text-white flex-1' 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => routerPush(`/giaotrinh/view/${curriculum.curriculum_id}`)}
-                      >
-                        Xem chi tiết
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )
-          })
+          paginated.map((curriculum, index) => (
+            <Card key={`${curriculum.curriculum_id}+${index}`} className="bg-white shadow-sm border border-gray-200 relative">
+              {/* Note: Removed delete button since curriculum_original shouldn't be deletable */}
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold text-black">{curriculum.curriculum_name}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="my-2 flex items-center gap-3 text-sm text-gray-600">
+                  <Image src='https://macpwgocrmlkwjjhhgzc.supabase.co/storage/v1/object/public/store2/image/Screenshot%202025-11-28%20101724.png' alt="curriculum icon" width={150} height={220}></Image>
+                  <div className='flex-1 flex flex-col h-[100%]'>
+                    <span>{curriculum.levels?.length || 0} trình độ</span>
+                    <span>{curriculum.units?.length || 0} bài học</span>
+                    <span>Mô tả: </span>
+                  </div>
+                </div>
+                <div className='flex space-x-2'>
+                  <Button
+                    className='bg-green-600 hover:bg-green-700 text-white flex-1'
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => routerPush(`/lesson/create?id=${curriculum.curriculum_id}`)}
+                  >
+                    Tạo bài học
+                  </Button>
+                  <Button
+                    className='bg-blue-600 hover:bg-blue-700 text-white flex-1'
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => routerPush(`/giaotrinh/view/${curriculum.curriculum_id}`)}
+                  >
+                    Xem chi tiết
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 

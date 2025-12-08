@@ -17,6 +17,7 @@ import LessonWordsTable from "@/components/lesson-builder/LessonWordsTable"
 import { useLessonBuilderLogic } from "@/components/lesson-builder/useLessonBuilderLogic"
 import { LocalWord } from "@/components/lesson-builder/types"
 import Modal from "./Modal"
+import { useFetchUnitsByIds } from "@/hooks"
 // import ModalAddWords from "./ModalAddWords"
 
 export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update', id?: string }) {
@@ -40,133 +41,8 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     // React Query hooks
     const { data: lessonById, isLoading: lessonByIdLoading } = useLessonById(lessonId)
 
-    // ===== HELPER: Fetch words from unit_ids =====
-    const fetchAndSetUnits = useCallback(async (unitIds: string[]) => {
-
-        interface ApiWordData {
-            word_id: string;
-            word_text: string;
-            word_meaning?: string;
-            word_ipa?: string;
-            word_popularity?: number;
-            word_parent_id?: string | null;
-            children_count: number;
-        }
-
-        interface ApiUnitData {
-            unit_id: string;
-            unit_name: string;
-            unit_words: {
-                original?: ApiWordData[];
-                custom?: ApiWordData[];
-            }
-        }
-
-        try {
-            const queryString = unitIds.map(id => `unitIds=${encodeURIComponent(String(id))}`).join('&');
-            const response = await fetch(`/api/proxy/words/by_units?${queryString}`);
-
-            if (!response.ok) throw new Error('Failed to fetch words');
-
-            const result = await response.json();
-            const wordsData = (result.success && result.data) ? result.data : (Array.isArray(result) ? result : []);
-
-            if (!Array.isArray(wordsData) || wordsData.length === 0) {
-                throw new Error('No words data returned from API');
-            }
-
-            // Transform API data (preserve children for UI, flatten children into data for selection)
-            const transformedUnits: Unit[] = []
-            const initialData: { [key: string]: LocalWord[] } = {}
-
-            wordsData.forEach((unitData: ApiUnitData) => {
-
-                // Roots for UI (unit.words contains only roots)
-                const root_original = (unitData.unit_words.original || []).map((w: ApiWordData): Word => ({
-                    word_id: w.word_id,
-                    word_text: (w as unknown as { word?: string }).word ?? w.word_text,
-                    word_meaning: w.word_meaning || '-',
-                    word_ipa: w.word_ipa,
-                    word_popularity: w.word_popularity || 0,
-                    word_parent_id: undefined,
-                    children_count: w.children_count
-                }))
-
-                // Roots for UI (unit.words contains only roots)
-                const root_custom = (unitData.unit_words.custom || []).map((w: ApiWordData): Word => ({ 
-                    word_id: w.word_id,
-                    word_text: (w as unknown as { word?: string }).word ?? w.word_text,
-                    word_meaning: w.word_meaning || '-',
-                    word_ipa: w.word_ipa,
-                    word_popularity: w.word_popularity || 0,
-                    word_parent_id: undefined,
-                    children_count: w.children_count
-                }))
-                transformedUnits.push({
-                        unit_id: unitData.unit_id,
-                        unit_name: unitData.unit_name,
-                        unit_words: {
-                            original: root_original,
-                            custom: root_custom
-                        }
-                    })
-
-                // Flatten roots + children into data for selection state
-                const list: LocalWord[] = []
-                const originals = Array.isArray(unitData.unit_words.original) ? unitData.unit_words.original : []
-                const customs = Array.isArray(unitData.unit_words.custom) ? unitData.unit_words.custom : []
-
-                const allRoots: ApiWordData[] = [...originals, ...customs]
-
-                allRoots.forEach((w: ApiWordData) => {
-                    // Push root word
-                    list.push({
-                        word_id: w.word_id,
-                        word_text: (w as unknown as { word?: string }).word ?? w.word_text,
-                        word_meaning: w.word_meaning || '-',
-                        word_ipa: w.word_ipa || '-',
-                        word_popularity: w.word_popularity || 0,
-                        word_parent_id: undefined,
-                        selected: false,
-                        done: false,
-                        belong: '',
-                        children_count: w.children_count
-                    })
-
-                    // // Push children if any
-                    // if (Array.isArray(w.children) && w.children.length > 0) {
-                    //     w.children.forEach((c: ApiChildWord) => {
-                    //         list.push({
-                    //             word_id: c.word_id,
-                    //             word_text: (c as unknown as { word?: string }).word ?? c.word_text ?? '',
-                    //             word_meaning: c.word_meaning ?? '-',
-                    //             word_ipa: c.word_ipa ?? '-',
-                    //             word_popularity: c.word_popularity ?? 0,
-                    //             word_parent_id: w.word_id,
-                    //             selected: false,
-                    //             done: false,
-                    //             belong: ''
-                    //         })
-                    //     })
-                    // }
-                })
-
-                // Deduplicate by word_id to avoid duplicate keys downstream
-                const uniqueMap = new Map<string, LocalWord>()
-                for (const lw of list) {
-                    if (!uniqueMap.has(lw.word_id)) uniqueMap.set(lw.word_id, lw)
-                }
-                initialData[unitData.unit_id] = Array.from(uniqueMap.values())
-            })
-
-            setUnits(transformedUnits)
-            setSelectedUnitIds(unitIds)
-            setData(initialData)
-        } catch (error) {
-            console.error('❌ Error fetching words:', error);
-            alert('Lỗi khi tải dữ liệu từ vựng. Vui lòng thử lại.');
-        }
-    }, [])
+    // Hook: fetch units by ids
+    const { fetchUnitsByIds, isLoadingUnits, refetchLast } = useFetchUnitsByIds()
 
     // ===== HELPER: Load edit mode data =====
     const loadEditModeData = useCallback(async () => {
@@ -180,7 +56,10 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             }
 
             setSelectedUnitsFromModal(unitIdsFromLesson.map(String));
-            await fetchAndSetUnits(unitIdsFromLesson.map(String));
+            const { units: fetchedUnits, initialData } = await fetchUnitsByIds(unitIdsFromLesson.map(String))
+            setUnits(fetchedUnits)
+            setSelectedUnitIds(unitIdsFromLesson.map(String))
+            setData(initialData)
 
             // Set course name
             const toStr = (v: unknown) => (v === undefined || v === null) ? '' : String(v);
@@ -229,7 +108,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             console.error('❌ Error loading edit mode data:', error);
             alert('Lỗi khi tải dữ liệu bài học. Vui lòng thử lại.');
         }
-    }, [lessonById, fetchAndSetUnits]);
+    }, [lessonById, fetchUnitsByIds]);
 
     // Create mode: nhận curriculum_id từ Modal
     const handleModalSuccess = async (modalData: {
@@ -237,6 +116,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         curriculum: Curriculum
         level: Level | undefined
     }) => {
+        try {
         const ccId =
             (modalData.curriculum as unknown as Record<string, unknown>)['curriculum_id'] ??
             (modalData.curriculum as unknown as Record<string, unknown>)['id'] ??
@@ -248,7 +128,14 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         }
 
         setSelectedUnitsFromModal(modalData.selectedUnits)
-        await fetchAndSetUnits(modalData.selectedUnits)
+            const { units: fetchedUnits, initialData } = await fetchUnitsByIds(modalData.selectedUnits)
+            setUnits(fetchedUnits)
+            setSelectedUnitIds(modalData.selectedUnits)
+            setData(initialData)
+        } catch (error) {
+            console.error('❌ Error fetching words:', error)
+            alert('Lỗi khi tải dữ liệu từ vựng. Vui lòng thử lại.')
+        }
     }
 
     const handleCloseModal = () => {
@@ -338,6 +225,13 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                                     expandedChildGroups={expandedChildGroups}
                                     setData={setData}
                                     setExpandedChildGroups={setExpandedChildGroups}
+                                    onWordsAdded={async () => {
+                                        const result = await refetchLast()
+                                        if (result) {
+                                            setUnits(result.units)
+                                            setData(result.initialData)
+                                        }
+                                    }}
                                     // onOpenModalAddWords={handleOpenModalAddWords}
                                 />
                             </div>
