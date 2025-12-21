@@ -428,7 +428,7 @@ export default function VocabTrainer() {
                             <div className="w-full mx-4 md:mx-8 flex justify-center items-center">
                                 <VocabDisplay currentWord={currentWord} />
                             </div>
-                            <div className="absolute top-[100%] right-2 text-gray-500 transition-transform hover:-translate-y-0.5 hover:cursor-pointer" onClick={() => openOxford(currentWord.word)}>oxford</div>
+                            <div className="absolute top-[100%] right-2 text-gray-500 transition-transform hover:-translate-y-0.5 hover:cursor-pointer italic hover:text-blue-500" onClick={() => openOxford(currentWord.word)}>oxford</div>
                         </div>
                     </CardContent>
                 </Card>

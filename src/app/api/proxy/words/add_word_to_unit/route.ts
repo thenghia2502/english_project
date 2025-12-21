@@ -4,12 +4,13 @@ export async function POST(request: Request) {
     try {
         const reqData = await request.json();
         const cookieStore = await cookies();
-                const accessToken = cookieStore.get('access_token')?.value
+        const accessToken = cookieStore.get('access_token')?.value
         const res = await fetch(`http://localhost:4000/unit/add-word`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json',
+            headers: {
+                'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
-             },
+            },
             body: JSON.stringify(reqData)
         });
         const data = await res.json();

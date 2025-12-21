@@ -2,6 +2,7 @@ import { Sign } from "crypto";
 import CurriculumOriginalManagementPage from "./curriculum/page";
 import Test from "./test";
 import SignUpPage from "./signUpPage";
+import TestImportFile from "./testImportFile";
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
     // <CurriculumOriginalManagementPage />
     // <Test/>
     <SignUpPage />
+    // <TestImportFile />
   );
 }
 

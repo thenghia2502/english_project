@@ -86,6 +86,6 @@ export async function GET() {
         const raw = await response.json();
         return new Response(JSON.stringify(raw), { status: 200, headers: { 'Cache-Control': 'no-store' } })
     } catch {
-        return new Response("Error in curriculum proxy endpoint:", { status: 500 });
+        return new Response("Error in curriculum proxy endpoint", { status: 500 });
     }
 }
