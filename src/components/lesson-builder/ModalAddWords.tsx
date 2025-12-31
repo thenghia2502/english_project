@@ -9,13 +9,15 @@ import { useGetUrlAudio } from "@/hooks/use-audios"
 import { useAddWordToUnit } from "@/hooks/use-add-word-to-unit"
 import { useCheckWordInUnit } from "@/hooks/use-check-word-in-unit"
 import React from "react"
+import { uk } from "zod/v4/locales"
+import { error } from "console"
 
 export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: { unitId: string, unitTitle: string, onClose: () => void, onAdded?: () => void | Promise<void> }) {
-    const [rows, setRows] = useState<Array<{ id: string; text: string; meaning: string; ukIpa: string; usIpa: string; exist: boolean }>>([
+    const [rows, setRows] = useState<Array<{ id: string; text: string; meaning: string; ukIpa: string; usIpa: string; exist: boolean; errors?: { text?: string[]; meaning?: string[]; ukIpa?: string[]; usIpa?: string[] } }>>([
         { id: "", text: "", meaning: "", ukIpa: "", usIpa: "", exist: false }
     ])
     // Lưu rows theo từng unitId để mỗi unit có dữ liệu riêng
-    const rowsByUnitRef = useRef<Record<string, Array<{ id: string; text: string; meaning: string; ukIpa: string; usIpa: string; exist: boolean }>>>({})
+    const rowsByUnitRef = useRef<Record<string, Array<{ id: string; text: string; meaning: string; ukIpa: string; usIpa: string; exist: boolean; errors?: { text?: string[]; meaning?: string[]; ukIpa?: string[]; usIpa?: string[] } }>>>({})
 
     // Cache audio để tránh fetch lại nhiều lần
     const audioCache = useRef<Map<string, string>>(new Map())
@@ -145,7 +147,7 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
         try {
             const res = await getAudio(word, dialect);
             if (!res) {
-                console.error(`Failed to fetch audio for "${word}": ${res.statusText}`)
+                console.error(`Failed to fetch audio for "${word}" (${dialect})`);
                 return;
             };
 
@@ -169,6 +171,27 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
         } catch (error) {
             console.error("Error playing audio:", error);
         }
+    }
+
+    // Parse error message để xác định field nào bị lỗi
+    const parseErrors = (errorMessages: string[]) => {
+        const errorsByField: { text?: string[]; meaning?: string[]; ukIpa?: string[]; usIpa?: string[] } = {}
+        errorMessages.forEach(msg => {
+            if (msg.toLowerCase().includes('meaning')) {
+                errorsByField.meaning = [...(errorsByField.meaning || []), msg]
+            } else if (msg.toLowerCase().includes('ipa') || msg.toLowerCase().includes('uk') || msg.toLowerCase().includes('us')) {
+                if (msg.toLowerCase().includes('uk')) {
+                    errorsByField.ukIpa = [...(errorsByField.ukIpa || []), msg]
+                } else if (msg.toLowerCase().includes('us')) {
+                    errorsByField.usIpa = [...(errorsByField.usIpa || []), msg]
+                } else {
+                    errorsByField.ukIpa = [...(errorsByField.ukIpa || []), msg]
+                }
+            } else {
+                errorsByField.text = [...(errorsByField.text || []), msg]
+            }
+        })
+        return errorsByField
     }
 
     const handleFileImport = () => {
@@ -196,16 +219,33 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
             const data = await response.json()
             console.log("Imported data:", data)
 
-            // API trả về format: { success, rows: [{ text, meaning, ipa_uk, ipa_us }], total }
-            const importedWords = data.rows || []
-            
-            if (importedWords.length > 0) {
-                const newRows = importedWords.map((word: any) => ({
+            // API trả về format mới: { success, rows: { validRows: [...], invalidRows: [...] } }
+            const validRowsRaw = Array.isArray(data?.rows?.validRows) ? data.rows.validRows : []
+            const invalidRows = Array.isArray(data?.rows?.invalidRows) ? data.rows.invalidRows : []
+
+            const validRows = validRowsRaw.filter((item: any) => {
+                // Chỉ giữ lại các dòng thật sự hợp lệ (có text hoặc id và có meaning)
+                const hasWord = !!(item?.id || (item?.text && String(item.text).trim()))
+                const hasMeaning = !!(item?.meaning && String(item.meaning).trim())
+                return hasWord && hasMeaning
+            })
+
+            if (invalidRows.length > 0) {
+                const invalidSummary = invalidRows
+                    .map((item: any) => `Dòng ${item.rowIndex}: ${(item.errors || []).join(", ")}`)
+                    .join("\n")
+                alert(`Một số dòng không hợp lệ và đã bị bỏ qua:\n${invalidSummary}`)
+            }
+            const combinedRows = [...validRows, ...invalidRows.map((item: any) => ({ id: item.data.id || "", text: item.data.text || "", meaning: item.data.meaning || "", ipa_uk: item.data.ipa_uk || "", ipa_us: item.data.ipa_us || "", errors: parseErrors(item.errors || []) }))]
+            console.log("combinedRows: ", combinedRows)
+            if (combinedRows.length > 0) {
+                const newRows = combinedRows.map((word: any) => ({
                     id: word.id || "",
                     text: word.text || "",
                     meaning: word.meaning || "",
                     ukIpa: word.ipa_uk || "",
                     usIpa: word.ipa_us || "",
+                    errors: word.errors || {},
                     exist: false
                 }))
 
@@ -268,9 +308,9 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[30%]">Text</TableHead>
-                                    <TableHead className="w-[35%]">Meaning</TableHead>
-                                    <TableHead className="w-[17.5%]">UK IPA</TableHead>
-                                    <TableHead className="w-[17.5%]">US IPA</TableHead>
+                                    <TableHead className="w-[20%]">Meaning</TableHead>
+                                    <TableHead className="w-[25%]">UK IPA</TableHead>
+                                    <TableHead className="w-[25%]">US IPA</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -295,61 +335,90 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                                                 {row.exist && (
                                                     <span className="absolute text-[12px] text-red-500 ml-2 mb-2">Từ này đã tồn tại trong bài học.</span>
                                                 )}
+                                                {row.errors?.text && row.errors.text.length > 0 && (
+                                                    <div className="absolute text-[12px] text-red-500 ml-2">
+                                                        {row.errors.text.map((err, i) => (<div key={i}>{err}</div>))}
+                                                    </div>
+                                                )}
                                             </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    placeholder="e.g. quyển vở"
-                                                    value={row.meaning}
-                                                    onChange={(e) => handleChange(idx, "meaning", e.target.value)}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
+                                            <TableCell className="">
+                                                <div className="relative">
                                                     <Input
-                                                        key={row.ukIpa + idx}       // ép rerender khi IPA thay đổi
-                                                        placeholder="e.g. /ˈnəʊtbʊk/"
-                                                        value={row.ukIpa}
-                                                        onChange={(e) => handleChange(idx, "ukIpa", e.target.value)}
+                                                        placeholder="e.g. quyển vở"
+                                                        value={row.meaning}
+                                                        onChange={(e) => handleChange(idx, "meaning", e.target.value)}
+                                                        className={row.errors?.meaning ? 'border-red-500' : ''}
                                                     />
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            handlePlayMP3(row.text, 'uk');
-                                                        }}
-                                                        disabled={!row.text.trim()}
-                                                        type="button"
-                                                    >
-                                                        <Volume2 className={!row.text.trim() ? "text-gray-300" : ""} />
-                                                    </Button>
+                                                    {row.errors?.meaning && row.errors.meaning.length > 0 && (
+                                                        <div className="absolute text-[12px] text-red-500 ml-2">
+                                                            {row.errors.meaning.map((err, i) => (<div key={i}>{err}</div>))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <Input
-                                                        key={row.usIpa + idx}
-                                                        placeholder="e.g. /ˈnoʊtbʊk/"
-                                                        value={row.usIpa}
-                                                        onChange={(e) => handleChange(idx, "usIpa", e.target.value)}
-                                                    />
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            handlePlayMP3(row.text, 'us');
-                                                        }}
-                                                        disabled={!row.text.trim()}
-                                                        type="button"
-                                                    >
-                                                        <Volume2 className={!row.text.trim() ? "text-gray-300" : ""} />
-                                                    </Button>
-
-                                                    {rows.length > 1 && (
-                                                        <Button variant="ghost" size="sm" onClick={() => removeRow(idx)}>
-                                                            Xóa
+                                            <TableCell className="">
+                                                <div className="relative">
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            key={row.ukIpa + idx}       // ép rerender khi IPA thay đổi
+                                                            placeholder="e.g. /ˈnəʊtbʊk/"
+                                                            value={row.ukIpa}
+                                                            onChange={(e) => handleChange(idx, "ukIpa", e.target.value)}
+                                                            className={row.errors?.ukIpa ? 'border-red-500' : ''}
+                                                        />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handlePlayMP3(row.text, 'uk');
+                                                            }}
+                                                            disabled={!row.text.trim()}
+                                                            type="button"
+                                                        >
+                                                            <Volume2 className={!row.text.trim() ? "text-gray-300" : ""} />
                                                         </Button>
+                                                    </div>
+                                                    {row.errors?.ukIpa && row.errors.ukIpa.length > 0 && (
+                                                        <div className="text-[12px] text-red-500 ml-2">
+                                                            {row.errors.ukIpa.map((err, i) => (<div key={i}>{err}</div>))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="">
+                                                <div className="relative">
+                                                    <div className="flex items-center gap-2">
+                                                        <Input
+                                                            key={row.usIpa + idx}
+                                                            placeholder="e.g. /ˈnoʊtbʊk/"
+                                                            value={row.usIpa}
+                                                            onChange={(e) => handleChange(idx, "usIpa", e.target.value)}
+                                                            className={row.errors?.usIpa ? 'border-red-500' : ''}
+                                                        />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                handlePlayMP3(row.text, 'us');
+                                                            }}
+                                                            disabled={!row.text.trim()}
+                                                            type="button"
+                                                        >
+                                                            <Volume2 className={!row.text.trim() ? "text-gray-300" : ""} />
+                                                        </Button>
+
+                                                        {rows.length > 1 && (
+                                                            <Button variant="ghost" size="sm" onClick={() => removeRow(idx)}>
+                                                                Xóa
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    {row.errors?.usIpa && row.errors.usIpa.length > 0 && (
+                                                        <div className="text-[12px] text-red-500 ml-2">
+                                                            {row.errors.usIpa.map((err, i) => (<div key={i}>{err}</div>))}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </TableCell>
