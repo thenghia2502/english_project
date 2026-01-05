@@ -323,11 +323,12 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                                                     placeholder="e.g. notebook"
                                                     value={row.text}
                                                     onChange={(e) => handleChange(idx, "text", e.target.value)}
-                                                    onBlur={() => fetchIpaAndCheckExistence(rows[idx].text, idx)}
+                                                    // onBlur={() => fetchIpaAndCheckExistence(rows[idx].text, idx)}
                                                     className={`${row.exist && 'border-red-500'}`}
                                                     onKeyDown={e => {
                                                         if (e.key === "Enter") {
                                                             e.preventDefault();   // ngăn xuống dòng
+                                                            fetchIpaAndCheckExistence(rows[idx].text, idx)
                                                             addRow();             // thêm dòng mới
                                                         }
                                                     }}
