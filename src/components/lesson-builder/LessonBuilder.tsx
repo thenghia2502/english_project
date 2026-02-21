@@ -32,6 +32,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     const [data, setData] = useState<{ [key: string]: LocalWord[] }>({})
     const [lessonWords, setLessonWords] = useState<LessonWord[]>([])
     const [courseName, setCourseName] = useState("")
+    const [description, setDescription] = useState("")
     const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
     const [selectedUnitsFromModal, setSelectedUnitsFromModal] = useState<string[]>([])
     const [expandedChildGroups, setExpandedChildGroups] = useState<Set<string>>(new Set())
@@ -48,7 +49,25 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     const loadEditModeData = useCallback(async () => {
         try {
             const lb = lessonById as Lesson;
-            const unitIdsFromLesson = (lb as unknown as Record<string, unknown>)['unit_ids'];
+            
+            // API trả về units array, không unit_ids
+            // Nếu có units array, extract IDs từ đó
+            let unitIdsFromLesson: string[] = [];
+            
+            const unitsFromLesson = (lb as unknown as Record<string, unknown>)['units'];
+            if (Array.isArray(unitsFromLesson) && unitsFromLesson.length > 0) {
+                unitIdsFromLesson = unitsFromLesson
+                    .map((u: unknown) => (u as Record<string, unknown>)['id'])
+                    .filter((id): id is string => typeof id === 'string');
+            }
+            
+            // Fallback: kiểm tra unit_ids field nếu units không có
+            if (unitIdsFromLesson.length === 0) {
+                const fallbackUnitIds = (lb as unknown as Record<string, unknown>)['unit_ids'];
+                if (Array.isArray(fallbackUnitIds)) {
+                    unitIdsFromLesson = fallbackUnitIds.map(String);
+                }
+            }
 
             if (!Array.isArray(unitIdsFromLesson) || unitIdsFromLesson.length === 0) {
                 console.warn('⚠️ No unit_ids found in lesson');
@@ -56,6 +75,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             }
 
             setSelectedUnitsFromModal(unitIdsFromLesson.map(String));
+            // Call fetchUnitsByIds directly without including it in dependencies
             const { units: fetchedUnits, initialData } = await fetchUnitsByIds(unitIdsFromLesson.map(String))
             setUnits(fetchedUnits)
             setSelectedUnitIds(unitIdsFromLesson.map(String))
@@ -63,7 +83,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
             // Set course name
             const toStr = (v: unknown) => (v === undefined || v === null) ? '' : String(v);
-            const lessonName = toStr((lb as unknown as Record<string, unknown>)['lesson_name']);
+            const lessonName = toStr((lb as unknown as Record<string, unknown>)['name'] ?? (lb as unknown as Record<string, unknown>)['lesson_name'] ?? '');
             const curriculum = (lb as unknown as Record<string, unknown>)['curriculum'] as Record<string, unknown>;
 
             if (curriculum && curriculum.curriculum_name) {
@@ -72,13 +92,16 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                 setCourseName(lessonName);
             }
 
+            // Set description if available
+            const desc = toStr((lb as unknown as Record<string, unknown>)['description'] ?? '');
+            setDescription(desc);
+
             // Set lesson words
-            const incomingWords: LessonWord[] = Array.isArray(lb.lesson_words)
-                ? (lb.lesson_words as unknown as Record<string, unknown>[]).map((w) => ({
-                    word_id: toStr(w['word_id']),
+            const incomingWords: LessonWord[] = Array.isArray(lb.words)
+                ? (lb.words as unknown as Record<string, unknown>[]).map((w) => ({
+                    id: toStr(w['id'] ?? ''),
                     word: toStr(w['word']),
-                    word_meaning: toStr(w['word_meaning']),
-                    word_ipa: toStr(w['word_ipa']),
+                    word_meaning: toStr(w['meaning'] ?? w['word_meaning'] ?? ''),
                     word_pause_time: toStr(w['word_pause_time'] ?? '1.5'),
                     word_max_read: toStr(w['word_max_read'] ?? '6'),
                     word_show_ipa: toStr(w['word_show_ipa'] ?? '3'),
@@ -88,6 +111,8 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                     word_progress: toStr(w['word_progress'] ?? '0'),
                     word_parent_id: toStr(w['word_parent_id'] ?? ''),
                     word_popularity: Number(w['word_popularity'] ?? 0),
+                    uk_ipa: toStr(w['uk_ipa'] ?? ''),
+                    us_ipa: toStr(w['us_ipa'] ?? ''),
                 }))
                 : [];
 
@@ -95,7 +120,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
 
             // Mark selected words
             setTimeout(() => {
-                const selectedIds = new Set(incomingWords.map((w) => w.word_id));
+                const selectedIds = new Set(incomingWords.map((w) => w.id));
                 setData((prev) => {
                     const out: typeof prev = {};
                     for (const key of Object.keys(prev)) {
@@ -108,7 +133,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
             console.error('❌ Error loading edit mode data:', error);
             alert('Lỗi khi tải dữ liệu bài học. Vui lòng thử lại.');
         }
-    }, [lessonById, fetchUnitsByIds]);
+    }, [lessonById]);
 
     // Create mode: nhận curriculum_id từ Modal
     const handleModalSuccess = async (modalData: {
@@ -117,17 +142,17 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         level: Level | undefined
     }) => {
         try {
-        const ccId =
-            (modalData.curriculum as unknown as Record<string, unknown>)['curriculum_id'] ??
-            (modalData.curriculum as unknown as Record<string, unknown>)['id'] ??
-            ''
-        setCurriculumOriginalId(String(ccId))                             // NEW
-        if (!modalData.selectedUnits || modalData.selectedUnits.length === 0) {
-            alert('Không có unit nào được chọn')
-            return
-        }
+            const ccId =
+                (modalData.curriculum as unknown as Record<string, unknown>)['curriculum_id'] ??
+                (modalData.curriculum as unknown as Record<string, unknown>)['id'] ??
+                ''
+            setCurriculumOriginalId(String(ccId))                             // NEW
+            if (!modalData.selectedUnits || modalData.selectedUnits.length === 0) {
+                alert('Không có unit nào được chọn')
+                return
+            }
 
-        setSelectedUnitsFromModal(modalData.selectedUnits)
+            setSelectedUnitsFromModal(modalData.selectedUnits)
             const { units: fetchedUnits, initialData } = await fetchUnitsByIds(modalData.selectedUnits)
             setUnits(fetchedUnits)
             setSelectedUnitIds(modalData.selectedUnits)
@@ -146,7 +171,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
     useEffect(() => {
         if (!isEditMode || !lessonById) return;
         loadEditModeData();
-    }, [isEditMode, lessonById, loadEditModeData])
+    }, [isEditMode, lessonById])
 
     // Business logic hook
     const {
@@ -156,6 +181,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         updateMaxReadsLessonWord,
         removeLessonWord,
         calculateEstimatedTime,
+        formatEstimatedTime,
         handleCreateLesson,
         handleUpdateLesson
     } = useLessonBuilderLogic({
@@ -166,7 +192,8 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
         lessonById,
         setLessonWords,
         setData,
-        curriculumOriginalId                                 // NEW
+        curriculumOriginalId,
+        description
     })
 
     // Loading state
@@ -232,7 +259,7 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                                             setData(result.initialData)
                                         }
                                     }}
-                                    // onOpenModalAddWords={handleOpenModalAddWords}
+                                // onOpenModalAddWords={handleOpenModalAddWords}
                                 />
                             </div>
                         )}
@@ -248,15 +275,17 @@ export default function TaoBaiHocPage({ mode, id }: { mode?: 'create' | 'update'
                 <div className="flex-1 border-l border-gray-300 bg-gray-100 overflow-y-auto">
                     {lessonByIdLoading ?
                         <div className="h-full flex justify-center items-center"><Loading message="Đang tải danh sách từ vựng..." /></div> : (
-                            <div className="p-6">
+                            <div className="p-6 flex flex-col gap-6">
                                 <LessonHeader
                                     lessonWordsCount={lessonWords.length}
                                     courseName={courseName}
                                     setCourseName={setCourseName}
-                                    estimatedTime={calculateEstimatedTime()}
+                                    estimatedTime={formatEstimatedTime(calculateEstimatedTime(lessonWords))}
                                     isEditMode={isEditMode}
                                     onSave={isEditMode ? handleUpdateLesson : handleCreateLesson}
                                     canSave={lessonWords.length > 0 && courseName.trim() !== ''}
+                                    description={description}
+                                    setDescription={setDescription}
                                 />
 
                                 {lessonWords.length === 0 ? (

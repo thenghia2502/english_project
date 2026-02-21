@@ -1,50 +1,97 @@
 'use client';
 
-import { useRouter } from "next/navigation";
+import { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useLogin } from "@/hooks/use-login";
 
 export default function SignUpPage() {
-    const router = useRouter();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const { login, isLoading, error } = useLogin();
+    
     const handleSubmit = async (event: React.FormEvent) => {
-        try {
-
-            event.preventDefault();
-            const formData = new FormData(event.target as HTMLFormElement);
-            const data = Object.fromEntries(formData.entries());
-            const response = await fetch('/api/proxy/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result?.error || 'Failed to sign up');
-            } else {
-                router.push('/curriculum');
-            }
-            console.log(result);
-        } catch (error) {
-            console.error('Error during sign up:', error);
-        }
+        event.preventDefault();
+        await login(email, password);
     }
     return (
-        <div className="h-screen w-full flex justify-center items-center">
-            <div className="border rounded py-6 shadow-md w-1/4">
-                <h3 className="text-center">Đăng nhập</h3>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4  p-6 pb-0  items-center">
-                    <label className="w-full flex">
-                        <span className="w-[80px]">
-                            Email:
-                        </span>
-                        <input type="email" name="email" required className="border flex-1 px-2" />
-                    </label>
-                    <label className="w-full flex">
-                        <span className="w-[80px]">
-                            Password:
-                        </span>
-                        <input type="password" name="password" required className="border flex-1 px-2" />
-                    </label>
-                    <button type="submit" className="border rounded py-2 w-1/2 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">Đăng nhập</button>
+        <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2 text-balance">Welcome Back</h1>
+                <p className="text-foreground/60 text-base">Continue your English learning journey</p>
+            </div>
+
+            <Card className="p-8 border border-border/50 shadow-lg">
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                        <label htmlFor="email" className="block text-sm font-medium text-foreground">
+                            Email Address
+                        </label>
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="w-full"
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <label htmlFor="password" className="block text-sm font-medium text-foreground">
+                                Password
+                            </label>
+                            <a href="#" className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
+                                Forgot?
+                            </a>
+                        </div>
+                        <Input
+                            id="password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="w-full"
+                        />
+                    </div>
+
+                    <Button type="submit" disabled={isLoading} className="w-full mt-6 h-11 font-semibold text-base">
+                        {isLoading ? "Logging in..." : "Log In"}
+                    </Button>
                 </form>
+
+                <div className="mt-6 pt-6 border-t border-border/40">
+                    <p className="text-center text-foreground/70 text-sm">
+                        Don't have an account?{" "}
+                        <a href="#" className="text-primary hover:text-primary/80 transition-colors font-semibold">
+                            Sign up
+                        </a>
+                    </p>
+                </div>
+            </Card>
+
+            <div className="mt-8 space-y-3">
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border/40"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-background text-foreground/60">or continue with</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <Button variant="outline" className="w-full h-10 bg-transparent">
+                        Google
+                    </Button>
+                    <Button variant="outline" className="w-full h-10 bg-transparent">
+                        Apple
+                    </Button>
+                </div>
             </div>
         </div>
     )

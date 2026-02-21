@@ -9,6 +9,13 @@ export async function POST(request: Request) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+        
+        // Kiểm tra status response từ backend
+        if (!res.ok) {
+            const errorData = await res.json();
+            return NextResponse.json(errorData, { status: res.status });
+        }
+        
         const data = await res.json();
 
         // Dùng NextResponse để set cookie
@@ -21,6 +28,12 @@ export async function POST(request: Request) {
             maxAge: data.session.expires_in // token hết hạn sau 3600s
         });
         response.cookies.set("refresh_token", data.session.refresh_token, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "strict",
+            path: "/",
+        });
+        response.cookies.set("user_id", data.user.id, {
             httpOnly: true,
             secure: isProduction,
             sameSite: "strict",

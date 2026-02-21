@@ -52,7 +52,7 @@ export default function AudioControls({
                         ? "bg-gray-400 hover:bg-gray-400 text-white cursor-not-allowed"
                         : isLooping
                         ? "bg-red-600 hover:bg-red-700 text-white"
-                        : "bg-blue-600 hover:bg-blue-700 text-white"
+                        : "bg-primary hover:bg-blue-500 text-white"
                 }`}
                 onClick={isCompleted ? onRestart : onAudioToggle}
                 disabled={isPageLoading || isDialectChanging}

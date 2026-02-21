@@ -17,40 +17,40 @@ export interface Word {
 }
 
 export interface Lesson {
-    lesson_id: string
-    lesson_name: string
-    lesson_words: LessonWord[]
-    lesson_order: number
-    lesson_created_at: string
-    lesson_updated_at: string
+    id: string
+    name: string
+    words: LessonWord[]
+    order: number
+    created_at: string
+    updated_at: string
+    description?: string
     estimatedTime?: string
-    lesson_progress: string
+    progress: string
     curriculum: {
         curriculum_name: string
     }
     curriculum_custom_id: string
-    units?: {
-        level: {
-            level_id: string
-            level_name: string
-            level_code: string
-        }
-        words: {
-            word_id: string
-            word: string
-            word_meaning: string
-        }[]
-        unit_id: string
-        unit_title: string
+    units: {
+        // level: {
+        //     level_id: string
+        //     level_name: string
+        //     level_code: string
+        // }
+        // words: {
+        //     word_id: string
+        //     word: string
+        //     word_meaning: string
+        // }[]
+        id: string
+        name: string
     }[],
-    unit_ids?: string[]
+    unit_ids?: string[]  // Support for old API format
 }
 
 export interface LessonWord {
-    word_id: string,
+    id: string
     word: string,
     word_meaning: string,
-    word_ipa?: string,
     word_pause_time: string
     word_max_read: string
     word_show_ipa: string
@@ -60,14 +60,17 @@ export interface LessonWord {
     word_progress: string
     word_popularity: number
     word_parent_id: string
+    uk_ipa: string
+    us_ipa: string
     example?: string
     audioUrl?: string
+    meaning?: string  // Fallback field từ API response
 }
 
 export interface UpdateLessonPayload {
     lesson_id: string
-    lesson_name: string
-    lesson_order?: number
+    name: string
+    order: number
     unit_ids: string[]
     words: {
         word_id: string

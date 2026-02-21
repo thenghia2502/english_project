@@ -32,7 +32,8 @@ export default function VocabTable({
                     <TableRow className="bg-gray-50">
                         <TableHead className="w-12 text-center font-semibold">#</TableHead>
                         <TableHead className="font-semibold">Từ</TableHead>
-                        <TableHead className="font-semibold">IPA</TableHead>
+                        <TableHead className="font-semibold">UK IPA</TableHead>
+                        <TableHead className="font-semibold">US IPA</TableHead>
                         <TableHead className="font-semibold">khoảng dừng</TableHead>
                         <TableHead className="font-semibold">Ví dụ</TableHead>
                         <TableHead className="font-semibold w-20 text-center">Đọc</TableHead>
@@ -41,7 +42,7 @@ export default function VocabTable({
                 <TableBody>
                     {vocabularyData.map((item, index) => (
                         <TableRow
-                            key={item.word_id}
+                            key={item.id}
                             className={`hover:bg-gray-100 transition-colors cursor-pointer ${
                                 index === currentIndex ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
                             }`}
@@ -62,14 +63,17 @@ export default function VocabTable({
                                 onClick={() => onWordClick(index)} 
                                 className="text-gray-600 ipa-text text-sm"
                             >
-                                {item.word_ipa}
+                                {item.uk_ipa}
+                            </TableCell>
+                            <TableCell className="text-gray-600 ipa-text text-sm">
+                                {item.us_ipa}
                             </TableCell>
                             <TableCell className="text-gray-600 italic flex items-center space-x-2">
                                 <Input
                                     id="pause-time"
                                     type="number"
                                     value={item.word_pause_time}
-                                    onChange={(e) => onUpdateWord(item.word_id, "word_pause_time", e.target.value)}
+                                    onChange={(e) => onUpdateWord(item.id, "word_pause_time", e.target.value)}
                                     placeholder="0"
                                     className="w-1/2 text-sm text-center"
                                     min="0"

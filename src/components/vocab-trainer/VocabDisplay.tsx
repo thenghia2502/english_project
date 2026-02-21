@@ -3,10 +3,11 @@
 import { LessonWord } from '@/lib/types'
 
 interface VocabDisplayProps {
-    currentWord: LessonWord | null
+    currentWord: LessonWord,
+    ipa?: string,
 }
 
-export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
+export default function VocabDisplay({ currentWord, ipa }: VocabDisplayProps) {
     if (!currentWord) {
         return <span className="text-4xl text-gray-400">Đang tải...</span>
     }
@@ -33,21 +34,21 @@ export default function VocabDisplay({ currentWord }: VocabDisplayProps) {
     }
 
     if (phase === 1) {
-        return <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word_ipa}</span>
+        return <span onClick={openCambridge} title='go to cambridge dictionary' className="ipa-text text-[10rem] text-blue-600 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">/{ipa}/</span>
     }
 
     if (phase === 2) {
         return (
             <span className="text-7xl text-gray-900">
-                <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word}</span>
+                <span onClick={openCambridge} title='go to cambridge dictionary' className="ipa-text text-[10rem] text-blue-600 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word}</span>
             </span>
         )
     }
 
     return (
         <span className="flex flex-col">
-            <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 text-center hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word}</span>
-            <span onClick={openCambridge} className="ipa-text text-[10rem] text-blue-600 ml-2 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word_ipa}</span>
+            <span onClick={openCambridge} title='go to cambridge dictionary' className="ipa-text text-[10rem] text-blue-600 text-center hover:cursor-pointer hover:-translate-y-0.5 transition-transform">{currentWord.word}</span>
+            <span onClick={openCambridge} title='go to cambridge dictionary' className="ipa-text text-[10rem] text-blue-600 ml-2 hover:cursor-pointer hover:-translate-y-0.5 transition-transform">/{ipa}/</span>
         </span>
     )
 }

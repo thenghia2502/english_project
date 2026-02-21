@@ -5,13 +5,14 @@ export async function POST(req: Request) {
         const body = await req.json();
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value
+        const userId = cookieStore.get('user_id')?.value;
         const res = await fetch(`http://localhost:4000/unit/check-word`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({ ...body, userId }),
         });
         // Lấy JSON từ backend
         const data = await res.json();

@@ -1,6 +1,5 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { useRef } from 'react';
-import { Unit, Word } from "@/lib/types";
+import { useQuery } from '@tanstack/react-query';
+import { Unit } from "@/lib/types";
 import { LocalWord } from "@/components/lesson-builder/types";
 
 interface ApiWordData {
@@ -56,9 +55,9 @@ const fetchUnitsByIds = async (unitIds: string[]): Promise<FetchUnitsResult> => 
             ? [] 
             : (unitWords.custom || []);
 
-        const root_original = original.map((w: ApiWordData): Word => ({
+        const root_original = original.map((w: ApiWordData) => ({
             word_id: w.word_id,
-            word_text: (w as unknown as { word?: string }).word ?? w.word_text,
+            word_text: (w as any).word ?? w.word_text,
             word_meaning: w.word_meaning || '-',
             word_ipa: w.word_ipa,
             word_popularity: w.word_popularity || 0,
@@ -66,9 +65,9 @@ const fetchUnitsByIds = async (unitIds: string[]): Promise<FetchUnitsResult> => 
             children_count: w.children_count
         }));
 
-        const root_custom = custom.map((w: ApiWordData): Word => ({
+        const root_custom = custom.map((w: ApiWordData) => ({
             word_id: w.word_id,
-            word_text: (w as unknown as { word?: string }).word ?? w.word_text,
+            word_text: (w as any).word ?? w.word_text,
             word_meaning: w.word_meaning || '-',
             word_ipa: w.word_ipa,
             word_popularity: w.word_popularity || 0,
@@ -91,7 +90,7 @@ const fetchUnitsByIds = async (unitIds: string[]): Promise<FetchUnitsResult> => 
         allRoots.forEach((w: ApiWordData) => {
             list.push({
                 word_id: w.word_id,
-                word_text: (w as unknown as { word?: string }).word ?? w.word_text,
+                word_text: (w as any).word ?? w.word_text,
                 word_meaning: w.word_meaning || '-',
                 word_ipa: w.word_ipa || '-',
                 word_popularity: w.word_popularity || 0,
@@ -113,62 +112,12 @@ const fetchUnitsByIds = async (unitIds: string[]): Promise<FetchUnitsResult> => 
     return { units: transformedUnits, initialData: initialDataLocal };
 };
 
-export function useFetchUnitsByIds(unitIds?: string[], enabled: boolean = true) {
-    const lastUnitIdsRef = useRef<string[] | null>(null);
-
-    // Use mutation for on-demand fetching
-    const mutation = useMutation({
-        mutationFn: (ids: string[]) => {
-            lastUnitIdsRef.current = ids;
-            return fetchUnitsByIds(ids);
-        },
-    });
-
-    // Use query for automatic fetching when unitIds is provided
-    const query = useQuery({
+export function useFetchUnitsByIdsQuery(unitIds: string[], enabled: boolean = true) {
+    return useQuery({
         queryKey: ['units', unitIds],
-        queryFn: () => {
-            if (unitIds) {
-                lastUnitIdsRef.current = unitIds;
-            }
-            return fetchUnitsByIds(unitIds!);
-        },
-        enabled: enabled && !!unitIds && unitIds.length > 0,
+        queryFn: () => fetchUnitsByIds(unitIds),
+        enabled: enabled && unitIds.length > 0,
         staleTime: 5 * 60 * 1000, // 5 minutes
-        gcTime: 10 * 60 * 1000, // 10 minutes
+        gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     });
-
-    // If unitIds is provided, use query mode
-    if (unitIds && unitIds.length > 0) {
-        return {
-            units: query.data?.units || [],
-            initialData: query.data?.initialData || {},
-            isLoadingUnits: query.isLoading,
-            unitsError: query.error?.message || null,
-            refetch: query.refetch,
-            fetchUnitsByIds: (ids: string[]) => fetchUnitsByIds(ids),
-            refetchLast: async (): Promise<FetchUnitsResult | null> => {
-                const result = await query.refetch();
-                return result.data || null;
-            }
-        };
-    }
-
-    // Otherwise, use mutation mode for manual fetching
-    return {
-        units: mutation.data?.units || [],
-        initialData: mutation.data?.initialData || {},
-        isLoadingUnits: mutation.isPending,
-        unitsError: mutation.error?.message || null,
-        refetch: () => {},
-        fetchUnitsByIds: async (ids: string[]) => {
-            const result = await mutation.mutateAsync(ids);
-            return result;
-        },
-        refetchLast: async (): Promise<FetchUnitsResult | null> => {
-            if (!lastUnitIdsRef.current) return null;
-            const result = await mutation.mutateAsync(lastUnitIdsRef.current);
-            return result;
-        }
-    };
 }

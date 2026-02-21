@@ -15,39 +15,39 @@ import { SortBy } from "./types"
 function sortLessonsByCreatedAt(lessons: Lesson[]): Lesson[] {
     if (!Array.isArray(lessons)) return []
     return [...lessons].sort(
-        (a, b) => new Date(b.lesson_created_at).getTime() - new Date(a.lesson_created_at).getTime()
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
 }
 
 function searchLessonsByName(lessons: Lesson[], query: string): Lesson[] {
     if (!Array.isArray(lessons)) return []
     return lessons.filter(lesson =>
-        lesson.lesson_name.toLowerCase().includes(query.toLowerCase())
+        lesson.name.toLowerCase().includes(query.toLowerCase())
     )
 }
 
 function sortLessonsByDone(lessons: Lesson[]): Lesson[] {
     if (!Array.isArray(lessons)) return []
     return [...lessons].sort(
-        (a, b) => Number(b.lesson_progress) - Number(a.lesson_progress)
+        (a, b) => Number(b.progress) - Number(a.progress)
     )
 }
 
 export default function LessonManagementPage() {
     const router = useRouter()
-
-    // React Query hooks
-    const deleteLessonMutation = useDeleteLesson()
-    const { data: lessons = [], isLoading: lessonsLoading, error: lessonsError } = useLessons()
     
     // Local state for UI
     const [sortBy, setSortBy] = useState<SortBy>('date-desc')
     const [searchText, setSearchText] = useState('')
 
+    // React Query hooks
+    const deleteLessonMutation = useDeleteLesson()
+    const { data: lessons, isLoading: lessonsLoading, error: lessonsError } = useLessons(searchText, 100, 1)
+    
     // Computed values
     const isLoading = lessonsLoading
     const error = lessonsError?.message
-    const hasNoLessons = !isLoading && !error && lessons.length === 0
+    const hasNoLessons = !isLoading && !error && lessons?.data.length === 0
 
     const handleSortChange = (value: string) => {
         if (value === "date-desc" || value === "date-asc" || value === "progress-desc" || value === "progress-asc") {
@@ -58,7 +58,7 @@ export default function LessonManagementPage() {
     // Tính toán lessons đã được lọc và sắp xếp
     const filteredAndSortedLessons = useMemo(() => {
         // Đảm bảo lessons là array
-        const safeLessons = Array.isArray(lessons) ? lessons : []
+        const safeLessons = Array.isArray(lessons?.data) ? lessons.data : []
         
         // Lọc theo text search trước
         const filtered = searchText
@@ -94,14 +94,14 @@ export default function LessonManagementPage() {
 
     // Start learning a lesson
     const startLearning = (lesson: Lesson) => {
-        router.push(`/hoctu?lessonId=${lesson.lesson_id}`)
+        router.push(`/hoctu?lessonId=${lesson.id}`)
     }
 
     // Edit lesson
     const editLesson = async (lesson: Lesson) => {
         try {
             // Chuyển hướng đến trang edit với mode=edit
-            router.push(`/lesson/update/${lesson.lesson_id}`)
+            router.push(`/lesson/update/${lesson.id}`)
         } catch (error) {
             console.error('Error fetching lesson data for edit:', error)
         }

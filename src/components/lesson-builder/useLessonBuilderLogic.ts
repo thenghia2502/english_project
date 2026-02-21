@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useCreateLesson, useUpdateLessonWords } from "@/hooks"
 import { LessonWord } from "@/lib/types"
 import { LocalWord } from "./types"
+import { ca, de } from "zod/v4/locales"
 
 interface UseLessonBuilderLogicProps {
     // Data
@@ -13,8 +14,9 @@ interface UseLessonBuilderLogicProps {
     courseName: string
     lessonById?: unknown
     selectedUnitsFromModal: string[]
-    curriculumOriginalId: string            // NEW
-
+    curriculumOriginalId: string            
+    description: string      
+                  
     // Setters
     setLessonWords: React.Dispatch<React.SetStateAction<LessonWord[]>>
     setData: React.Dispatch<React.SetStateAction<{ [key: string]: LocalWord[] }>>
@@ -28,7 +30,8 @@ export function useLessonBuilderLogic({
     lessonById,
     setLessonWords,
     setData,
-    curriculumOriginalId                     // NEW
+    curriculumOriginalId,
+    description
 }: UseLessonBuilderLogicProps) {
     const router = useRouter()
     const { mutate: createLessonMutation } = useCreateLesson()
@@ -57,10 +60,9 @@ export function useLessonBuilderLogic({
                 if (selectedMap.has(word.word_id)) return
 
                 selectedMap.set(word.word_id, {
-                    word_id: word.word_id,
+                    id: word.word_id,
                     word: word.word_text,
                     word_meaning: word.word_meaning,
-                    word_ipa: word.word_ipa,
                     word_pause_time: "2",
                     word_max_read: "6",
                     word_show_ipa: "3",
@@ -69,7 +71,9 @@ export function useLessonBuilderLogic({
                     word_reads_per_round: "6",
                     word_progress: "0",
                     word_popularity: word.word_popularity || 0,
-                    word_parent_id: word.word_parent_id || ""
+                    word_parent_id: word.word_parent_id || "",
+                    uk_ipa: word.word_ipa || "",
+                    us_ipa: word.word_ipa || ""
                 })
             })
         })
@@ -78,8 +82,8 @@ export function useLessonBuilderLogic({
 
         setLessonWords((prevWords) => {
             // Loại trùng so với danh sách đã có
-            const existingIds = new Set(prevWords.map((w) => w.word_id))
-            const additions = uniqueSelected.filter((w) => !existingIds.has(w.word_id))
+            const existingIds = new Set(prevWords.map((w) => w.id))
+            const additions = uniqueSelected.filter((w) => !existingIds.has(w.id))
             return [...prevWords, ...additions]
         })
     }, [data, setLessonWords])
@@ -111,7 +115,7 @@ export function useLessonBuilderLogic({
         const canonical = mapField(String(field))
 
         setLessonWords((prev) =>
-            prev.map((w) => (w.word_id === wordId ? { ...w, [canonical]: value } as LessonWord : w))
+            prev.map((w) => (w.id === wordId ? { ...w, [canonical]: value } as LessonWord : w))
         )
     }, [setLessonWords])
 
@@ -125,7 +129,7 @@ export function useLessonBuilderLogic({
 
         setLessonWords((prev) =>
             prev.map((w) =>
-                w.word_id === wordId
+                w.id === wordId
                     ? {
                         ...w,
                         word_max_read: String(maxReads),
@@ -142,7 +146,7 @@ export function useLessonBuilderLogic({
     // Remove word from lesson
     const removeLessonWord = useCallback((wordId: string) => {
         // Remove from lesson words
-        setLessonWords((prevWords) => prevWords.filter((word) => word.word_id !== wordId))
+        setLessonWords((prevWords) => prevWords.filter((word) => word.id !== wordId))
 
         // Unselect from data
         setData((prevData) => {
@@ -156,11 +160,11 @@ export function useLessonBuilderLogic({
         })
     }, [setLessonWords, setData])
 
-    // Calculate estimated time
-    const calculateEstimatedTime = useCallback(() => {
+    // Calculate estimated time in seconds
+    const calculateEstimatedTime = useCallback((words: LessonWord[]) => {
         let totalSeconds = 0
 
-        initialLessonWords.forEach((word) => {
+        words.forEach((word) => {
             const readCount = Number.parseInt(word.word_max_read) || 0
             if (readCount > 0) {
                 const readingTime = readCount * 2
@@ -168,15 +172,20 @@ export function useLessonBuilderLogic({
             }
         })
 
-        const minutes = Math.floor(totalSeconds / 60)
-        const seconds = totalSeconds % 60
+        return totalSeconds
+    }, [])
+
+    // Format time for display
+    const formatEstimatedTime = useCallback((seconds: number) => {
+        const minutes = Math.floor(seconds / 60)
+        const secs = seconds % 60
 
         if (minutes > 0) {
-            return `${minutes}p ${seconds}s`
+            return `${minutes}p ${secs}s`
         } else {
-            return `${seconds}s`
+            return `${secs}s`
         }
-    }, [initialLessonWords])
+    }, [])
 
     // Create new lesson
     const handleCreateLesson = useCallback(async () => {
@@ -197,7 +206,7 @@ export function useLessonBuilderLogic({
         const newLesson = {
             name,
             words: initialLessonWords.map((w) => ({
-                word_id: w.word_id,
+                word_id: w.id,
                 word_max_read: w.word_max_read,
                 word_show_ipa: w.word_show_ipa,
                 word_show_word: w.word_show_word,
@@ -207,8 +216,14 @@ export function useLessonBuilderLogic({
             })),
             unit_ids: selectedUnitsFromModal,
             order: 1,
-            curriculum_original_id: curriculumOriginalId     // FIX
+            curriculum_original_id: curriculumOriginalId,
+            duration: calculateEstimatedTime(initialLessonWords),
+            category: "Vocabulary",
+            description: description.trim()
         }
+
+        // console.log('📤 Creating lesson with payload:', newLesson)
+        // console.log('📝 Description value:', description, '| Trimmed:', description.trim())
 
         try {
             createLessonMutation(newLesson, {
@@ -221,7 +236,7 @@ export function useLessonBuilderLogic({
         } catch (err) {
             console.error('Failed to create course locally', err)
         }
-    }, [courseName, initialLessonWords, selectedUnitsFromModal, curriculumOriginalId, createLessonMutation, router])
+    }, [courseName, initialLessonWords, selectedUnitsFromModal, curriculumOriginalId, description, createLessonMutation, router])
 
     // Update existing lesson
     const handleUpdateLesson = useCallback(async () => {
@@ -241,10 +256,12 @@ export function useLessonBuilderLogic({
         }
 
         try {
+            const lbRecord = (lessonById as unknown as Record<string, unknown>)
+            const lesson_id = (lbRecord['lesson_id'] as string) ?? (lbRecord['id'] as string)
             const payload = {
-                lesson_id: (lessonById as unknown as Record<string, unknown>)['lesson_id'] as string,
+                lesson_id,
                 words: initialLessonWords.map((w) => ({
-                    word_id: w.word_id,
+                    word_id: w.id,
                     word_progress: w.word_progress,
                     word_max_read: w.word_max_read,
                     word_show_ipa: w.word_show_ipa,
@@ -252,7 +269,10 @@ export function useLessonBuilderLogic({
                     word_show_ipa_and_word: w.word_show_ipa_and_word,
                     word_reads_per_round: w.word_reads_per_round,
                     word_pause_time: w.word_pause_time
-                }))
+                })),
+                duration: calculateEstimatedTime(initialLessonWords),
+                name: courseName.trim(),
+                description: description.trim()
             }
 
             console.log('📤 Updating lesson with payload:', payload)
@@ -276,6 +296,7 @@ export function useLessonBuilderLogic({
         updateMaxReadsLessonWord,
         removeLessonWord,
         calculateEstimatedTime,
+        formatEstimatedTime,
         handleCreateLesson,
         handleUpdateLesson
     }

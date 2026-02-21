@@ -33,6 +33,8 @@
 //         const response = await fetch(outgoing, { cache: 'no-store' });
 //         const raw = await response.json();
 
+import { cookies } from "next/headers";
+
 //         // Try common unwrap locations: raw, raw.data, raw.data.data
 //         const candidates = [raw, raw?.data, raw?.data?.data];
 
@@ -81,8 +83,15 @@ export async function GET() {
     try {
         // const url = new URL(request.url)
         // const search = url.search || ''
+        const cookieStore = await cookies();
+        const accessToken = cookieStore.get('access_token')?.value;
         const outgoing = `http://localhost:4000/curriculum`
-        const response = await fetch(outgoing, { cache: 'no-store' });
+        const response = await fetch(outgoing, {
+            cache: 'no-store',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`
+            }
+        });
         const raw = await response.json();
         return new Response(JSON.stringify(raw), { status: 200, headers: { 'Cache-Control': 'no-store' } })
     } catch {

@@ -17,5 +17,7 @@ module.exports = {
     'bg-popover',
     'text-popover-foreground',
   ],
-  plugins: [],
+  plugins: [
+    require('tailwindcss-animatecss')
+  ],
 }

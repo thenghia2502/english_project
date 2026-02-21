@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button"
 import { useGetUrlAudio } from "@/hooks/use-audios"
 import { useAddWordToUnit } from "@/hooks/use-add-word-to-unit"
 import { useCheckWordInUnit } from "@/hooks/use-check-word-in-unit"
+import { useToast } from "@/hooks/use-toast"
 import React from "react"
-import { uk } from "zod/v4/locales"
+import { th, uk } from "zod/v4/locales"
 import { error } from "console"
 
 export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: { unitId: string, unitTitle: string, onClose: () => void, onAdded?: () => void | Promise<void> }) {
@@ -30,6 +31,7 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
     const getAudio = useGetUrlAudio()
     const { addWordToUnit, isLoading: isSubmitting } = useAddWordToUnit()
     const { checkWordInUnit } = useCheckWordInUnit<{ exists: boolean }>()
+    const { toast } = useToast()
 
     // Khi unitId thay đổi, đồng bộ rows tương ứng
     useEffect(() => {
@@ -106,13 +108,21 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
 
     const handleSubmit = async () => {
         if (isSubmitting) {
-            console.warn("Request is loading")
+            toast({
+                title: "Đang xử lý",
+                description: "Vui lòng đợi yêu cầu hiện tại hoàn thành",
+                variant: "default"
+            });
             return
         }
 
         const validRows = rows.filter(r => (r.id && r.id.trim()) || (r.text && r.text.trim()))
         if (validRows.length === 0) {
-            console.warn("No words to submit")
+            toast({
+                title: "Không có từ",
+                description: "Vui lòng nhập ít nhất một từ để lưu",
+                variant: "destructive"
+            });
             return
         }
 
@@ -128,7 +138,11 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
 
     const handlePlayMP3 = async (word: string, dialect: "uk" | "us") => {
         if (!word.trim()) {
-            console.warn("No word to play");
+            toast({
+                title: "Không có từ",
+                description: "Vui lòng nhập từ để phát âm thanh",
+                variant: "destructive"
+            });
             return;
         }
 
@@ -220,31 +234,17 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
             console.log("Imported data:", data)
 
             // API trả về format mới: { success, rows: { validRows: [...], invalidRows: [...] } }
-            const validRowsRaw = Array.isArray(data?.rows?.validRows) ? data.rows.validRows : []
-            const invalidRows = Array.isArray(data?.rows?.invalidRows) ? data.rows.invalidRows : []
+            const validRowsRaw = Array.isArray(data?.rows) ? data.rows : []
 
-            const validRows = validRowsRaw.filter((item: any) => {
-                // Chỉ giữ lại các dòng thật sự hợp lệ (có text hoặc id và có meaning)
-                const hasWord = !!(item?.id || (item?.text && String(item.text).trim()))
-                const hasMeaning = !!(item?.meaning && String(item.meaning).trim())
-                return hasWord && hasMeaning
-            })
-
-            if (invalidRows.length > 0) {
-                const invalidSummary = invalidRows
-                    .map((item: any) => `Dòng ${item.rowIndex}: ${(item.errors || []).join(", ")}`)
-                    .join("\n")
-                alert(`Một số dòng không hợp lệ và đã bị bỏ qua:\n${invalidSummary}`)
-            }
-            const combinedRows = [...validRows, ...invalidRows.map((item: any) => ({ id: item.data.id || "", text: item.data.text || "", meaning: item.data.meaning || "", ipa_uk: item.data.ipa_uk || "", ipa_us: item.data.ipa_us || "", errors: parseErrors(item.errors || []) }))]
+            const combinedRows = [...validRowsRaw]
             console.log("combinedRows: ", combinedRows)
             if (combinedRows.length > 0) {
                 const newRows = combinedRows.map((word: any) => ({
                     id: word.id || "",
                     text: word.text || "",
                     meaning: word.meaning || "",
-                    ukIpa: word.ipa_uk || "",
-                    usIpa: word.ipa_us || "",
+                    ukIpa: word.ukIPA || "",
+                    usIpa: word.usIPA || "",
                     errors: word.errors || {},
                     exist: false
                 }))
@@ -252,9 +252,9 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                 // Kiểm tra sự tồn tại cho các từ import
                 for (let i = 0; i < newRows.length; i++) {
                     if (newRows[i].id) {
-                        const existsData = await checkWordInUnit({ 
-                            wordId: newRows[i].id, 
-                            unitId 
+                        const existsData = await checkWordInUnit({
+                            wordId: newRows[i].id,
+                            unitId
                         })
                         newRows[i].exist = typeof existsData === "boolean" ? existsData : !!existsData?.exists
                     }
@@ -263,21 +263,26 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                 // Merge với rows hiện tại (loại bỏ row trống và tránh duplicate)
                 setRows(prev => {
                     const filtered = prev.filter(r => r.text.trim() || r.meaning.trim())
-                    
-                    // Lọc ra các từ import chưa tồn tại trong rows hiện tại
+
+                    // Lọc ra các từ import chưa tồn tại trong unit và chưa có trong rows hiện tại
                     const existingTexts = new Set(filtered.map(r => r.text.trim().toLowerCase()))
-                    const uniqueNewRows = newRows.filter(r => 
+                    const uniqueNewRows = newRows.filter(r =>
                         !existingTexts.has(r.text.trim().toLowerCase())
                     )
-                    
-                    const merged = filtered.length > 0 ? [...filtered, ...uniqueNewRows] : uniqueNewRows
+
+                    const combined = filtered.length > 0 ? [...filtered, ...uniqueNewRows] : uniqueNewRows
+                    const merged = [...combined, { id: "", text: "", meaning: "", ukIpa: "", usIpa: "", exist: false }]
                     rowsByUnitRef.current[unitId] = merged
                     return merged
                 })
             }
         } catch (error) {
             console.error("Error importing file:", error)
-            alert("Có lỗi xảy ra khi import file. Vui lòng thử lại.")
+            toast({
+                title: "Lỗi import file",
+                description: "Có lỗi xảy ra khi import file. Vui lòng thử lại.",
+                variant: "destructive"
+            });
         } finally {
             setIsUploading(false)
             // Reset input để có thể import lại cùng file
@@ -285,6 +290,13 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                 fileInputRef.current.value = ''
             }
         }
+    }
+    const fetchIpa = async (word: string, dialect: "uk" | "us") => {
+        const res = await fetch(`/api/proxy/words/ipa/${dialect}?word=${encodeURIComponent(word)}`);
+        if (!res.ok) {
+            throw new Error(`Failed to fetch ${dialect.toUpperCase()} IPA: ${res.statusText}`);
+        }
+        return await res.json();
     }
 
     return (
@@ -327,9 +339,30 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                                                     className={`${row.exist && 'border-red-500'}`}
                                                     onKeyDown={e => {
                                                         if (e.key === "Enter") {
-                                                            e.preventDefault();   // ngăn xuống dòng
-                                                            fetchIpaAndCheckExistence(rows[idx].text, idx)
-                                                            addRow();             // thêm dòng mới
+                                                            e.preventDefault();
+                                                            const isLastRow = idx === rows.length - 1;
+                                                            const hasData = row.text.trim();
+
+                                                            if (isLastRow) {
+                                                                if (hasData) {
+                                                                    // Dòng cuối cùng và có dữ liệu: fetch IPA và tạo dòng mới
+                                                                    fetchIpaAndCheckExistence(row.text, idx);
+                                                                    addRow();
+                                                                } else {
+                                                                    // Dòng cuối cùng nhưng chưa có dữ liệu: hiển thị toast cảnh báo
+                                                                    toast({
+                                                                        title: "Chưa nhập từ",
+                                                                        description: "Vui lòng nhập từ trước khi tạo dòng mới",
+                                                                        variant: "destructive"
+                                                                    });
+                                                                }
+                                                            } else {
+                                                                // Không phải dòng cuối: chuyển focus sang dòng tiếp theo
+                                                                if (hasData) {
+                                                                    fetchIpaAndCheckExistence(row.text, idx);
+                                                                }
+                                                                inputRefs.current[idx + 1]?.focus();
+                                                            }
                                                         }
                                                     }}
                                                 />
@@ -381,13 +414,13 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                                                         </Button>
                                                     </div>
                                                     {row.errors?.ukIpa && row.errors.ukIpa.length > 0 && (
-                                                        <div className="text-[12px] text-red-500 ml-2">
+                                                        <div className="absolute text-[12px] text-red-500 ml-2">
                                                             {row.errors.ukIpa.map((err, i) => (<div key={i}>{err}</div>))}
                                                         </div>
                                                     )}
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="">
+                                            <TableCell className="relative">
                                                 <div className="relative">
                                                     <div className="flex items-center gap-2">
                                                         <Input
@@ -409,19 +442,20 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                                                         >
                                                             <Volume2 className={!row.text.trim() ? "text-gray-300" : ""} />
                                                         </Button>
-
-                                                        {rows.length > 1 && (
-                                                            <Button variant="ghost" size="sm" onClick={() => removeRow(idx)}>
-                                                                Xóa
-                                                            </Button>
-                                                        )}
                                                     </div>
                                                     {row.errors?.usIpa && row.errors.usIpa.length > 0 && (
-                                                        <div className="text-[12px] text-red-500 ml-2">
+                                                        <div className="absolute text-[12px] text-red-500 ml-2">
                                                             {row.errors.usIpa.map((err, i) => (<div key={i}>{err}</div>))}
                                                         </div>
                                                     )}
                                                 </div>
+                                                {rows.length > 1 && idx !== rows.length - 1 && (
+                                                    <button className="w-10 h-10 absolute top-0 right-0 bg-red-500 [clip-path:polygon(0_0,100%_0,100%_100%)] z-50" onClick={() => removeRow(idx)}>
+                                                        <div className="w-full h-full relative">
+                                                            <X className="w-4 h-4 text-white absolute right-1 top-1" />
+                                                        </div>
+                                                    </button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     </React.Fragment>
@@ -431,16 +465,17 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                     </div>
                     <div className="mt-3 flex justify-between">
                         <div className="flex gap-2">
-                            <Button 
-                                variant="outline" 
-                                className="hover:cursor-pointer transition-transform hover:-translate-y-0.5" 
+                            <Button
+                                variant="outline"
+                                className="hover:cursor-pointer transition-transform hover:-translate-y-0.5"
                                 onClick={addRow}
+                                disabled={rows.length > 0 && !rows[rows.length - 1].text.trim()}
                             >
                                 Thêm dòng
                             </Button>
-                            <Button 
-                                variant="outline" 
-                                className="hover:cursor-pointer transition-transform hover:-translate-y-0.5 flex items-center gap-2" 
+                            <Button
+                                variant="outline"
+                                className="hover:cursor-pointer transition-transform hover:-translate-y-0.5 flex items-center gap-2"
                                 onClick={handleFileImport}
                                 disabled={isUploading}
                             >
@@ -451,7 +486,7 @@ export default function ModalAddWords({ unitId, unitTitle, onClose, onAdded }: {
                                 ref={fileInputRef}
                                 type="file"
                                 className="hidden"
-                                accept=".json,.csv,.xlsx,.xls"
+                                accept=".json,.csv,.xlsx,.xls,.txt"
                                 onChange={handleFileChange}
                             />
                         </div>

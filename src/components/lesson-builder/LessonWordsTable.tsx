@@ -37,8 +37,8 @@ export default function LessonWordsTable({
                     collisionDetection={closestCenter}
                     onDragEnd={({ active, over }) => {
                         if (active.id !== over?.id) {
-                            const oldIndex = lessonWords.findIndex((w) => w.word_id === active.id)
-                            const newIndex = lessonWords.findIndex((w) => w.word_id === over?.id)
+                            const oldIndex = lessonWords.findIndex((w) => w.id === active.id)
+                            const newIndex = lessonWords.findIndex((w) => w.id === over?.id)
                             setLessonWords((words) => arrayMove(words, oldIndex, newIndex))
                         }
                     }}
@@ -69,13 +69,13 @@ export default function LessonWordsTable({
                                 <TableHead className="w-16 py-4 px-4"></TableHead>
                             </TableRow>
                         </TableHeader>
-                        <SortableContext items={lessonWords.map((w) => w.word_id)} strategy={verticalListSortingStrategy}>
+                        <SortableContext items={lessonWords.map((w) => w.id)} strategy={verticalListSortingStrategy}>
                             <TableBody>
                                 {lessonWords.map((cw) => {
                                     const word: LocalWord = {
-                                        word_id: cw.word_id,
+                                        word_id: cw.id,
                                         word: cw.word,
-                                        ipa: cw.word_ipa || ''
+                                        ipa: ''
                                     }
 
                                     return (

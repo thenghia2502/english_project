@@ -1,9 +1,10 @@
 import { Lesson, UpdateLessonPayload } from '@/lib/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { apiFetch } from './apiFetch'
 
 // API functions - map to server endpoints
-const fetchLessonList = async () => {
-  const response = await fetch('/api/proxy/lesson')
+const fetchLessonList = async (search: string, limit: number, page: number, sortBy?: string, sortOrder?: string) => {
+  const response = await apiFetch(`/api/proxy/lesson?search=${search}&limit=${limit}&page=${page}&sortBy=${sortBy}&sortOrder=${sortOrder}`)
   if (!response.ok) throw new Error('Failed to fetch lessons')
   return response.json()
 }
@@ -79,14 +80,14 @@ export const lessonKeys = {
 }
 
 // Hooks
-export const useLessons = () => {
+export const useLessons = (Search: string, Limit: number, Page: number, SortBy?: string, SortOrder?: string) => {
   return useQuery({
-    queryKey: lessonKeys.lists(),
-    queryFn: fetchLessonList,
+    queryKey: [...lessonKeys.lists(), Search, Limit, Page, SortBy, SortOrder],
+    queryFn: () => fetchLessonList(Search, Limit, Page, SortBy, SortOrder),
     staleTime: 1000 * 60 * 5, // 5 phút stale time để tránh excessive refetch
     gcTime: 1000 * 60 * 10, // 10 phút cache time
-    refetchOnMount: false, // Không auto refetch khi mount
-    refetchOnWindowFocus: false, // Không refetch khi focus window
+    refetchOnMount: 'always', // Refetch nếu dữ liệu stale khi mount
+    refetchOnWindowFocus: 'always', // Refetch nếu dữ liệu stale khi focus window
   })
 }
 
@@ -131,19 +132,19 @@ export const useUpdateLesson = () => {
     mutationFn: updateLesson,
     onSuccess: async (data) => {
       // Debug log để track khi nào được gọi
-      // console.log('🔄 useUpdateLesson onSuccess called with:', data.lesson_id)
+      console.log('🔄 useUpdateLesson onSuccess called with:', data.id)
 
       // Cập nhật cache local cho lesson detail
-      queryClient.setQueryData(lessonKeys.detail(data.lesson_id), data)
+      queryClient.setQueryData(lessonKeys.detail(data.id), data)
 
       // Throttle invalidation để tránh multiple calls
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Invalidate lessons list một cách controlled
+      // Invalidate lessons list - use 'all' to ensure refetch even if inactive
       await queryClient.invalidateQueries({
         queryKey: lessonKeys.lists(),
         exact: true,
-        refetchType: 'active'
+        refetchType: 'all'
       })
 
       console.log('✅ useUpdateLesson invalidation completed')
@@ -157,22 +158,22 @@ export const useUpdateLessonWords = () => {
     mutationFn: updateLessonWords,
     onSuccess: async (data) => {
       // Debug log để track khi nào được gọi
-      // console.log('🔄 useUpdateLesson onSuccess called with:', data.lesson_id)
+      console.log('🔄 useUpdateLessonWords onSuccess called with:', data.id)
 
       // Cập nhật cache local cho lesson detail
-      queryClient.setQueryData(lessonKeys.detail(data.lesson_id), data)
+      queryClient.setQueryData(lessonKeys.detail(data.id), data)
 
       // Throttle invalidation để tránh multiple calls
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Invalidate lessons list một cách controlled
+      // Invalidate lessons list - use 'all' to ensure refetch even if inactive
       await queryClient.invalidateQueries({
         queryKey: lessonKeys.lists(),
         exact: true,
-        refetchType: 'active'
+        refetchType: 'all'
       })
 
-      console.log('✅ useUpdateLesson invalidation completed')
+      console.log('✅ useUpdateLessonWords invalidation completed')
     },
   })
 }

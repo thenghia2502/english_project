@@ -32,7 +32,7 @@ export default function LessonGrid({
         <>
             {lessons.map((lesson) => (
                 <LessonCard
-                    key={lesson.lesson_id}
+                    key={lesson.id}
                     lesson={lesson}
                     onDelete={onDelete}
                     onStartLearning={onStartLearning}

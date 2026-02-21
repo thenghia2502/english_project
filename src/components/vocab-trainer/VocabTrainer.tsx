@@ -127,20 +127,20 @@ export default function VocabTrainer() {
         try {
             // Transform vocabularyData to new format
             const wordsPayload = vocabularyData.map((w) => ({
-                word_id: w.word_id,
+                word_id: w.id,
                 word_progress: Number(w.word_progress) || 0,
                 word_pause_time: Number(w.word_pause_time) || 1.5, // Lưu bằng giây (s), không phải milliseconds
             }))
 
             // Get unit_ids from selectedLesson (if available)
-            const unit_ids = selectedLesson.units ? selectedLesson.units.map(unit => unit.unit_id) : selectedLesson.unit_ids ? selectedLesson.unit_ids : []
+            const unit_ids = selectedLesson.units ? selectedLesson.units.map(unit => unit.id) : []
 
             updatingLessonRef.current = true
             setIsUpdatingLesson(true)
             await updateLessonMutation.mutateAsync({
-                lesson_id: selectedLesson.lesson_id,
-                lesson_name: selectedLesson.lesson_name,
-                lesson_order: selectedLesson.lesson_order || 1,
+                lesson_id: selectedLesson.id,
+                name: selectedLesson.name,
+                order: selectedLesson.order || 1,
                 unit_ids: unit_ids,
                 words: wordsPayload,
             })
@@ -172,7 +172,7 @@ export default function VocabTrainer() {
 
     // Transform course data to vocabulary data when course is loaded
     useEffect(() => {
-        if (!selectedLesson || !Array.isArray(selectedLesson.lesson_words)) {
+        if (!selectedLesson || !Array.isArray(selectedLesson.words)) {
             if (!updatingLessonRef.current) {
                 setVocabularyData([])
                 setIsTransformingData(false)
@@ -180,7 +180,7 @@ export default function VocabTrainer() {
             return
         }
 
-        if (Array.isArray(selectedLesson.lesson_words) && selectedLesson.lesson_words.length === 0 && updatingLessonRef.current) {
+        if (Array.isArray(selectedLesson.words) && selectedLesson.words.length === 0 && updatingLessonRef.current) {
             return
         }
 
@@ -195,8 +195,8 @@ export default function VocabTrainer() {
             try {
                 // Transform words with audio URLs fetched in parallel
                 const transformedData = await Promise.all(
-                    selectedLesson.lesson_words.map(async (cw) => {
-                        const id = String(cw.word_id ?? '')
+                    selectedLesson.words.map(async (cw) => {
+                        const id = String(cw.id ?? '')
                         const wordText = String(cw.word)
 
                         // Try to get audio URL, fallback to local or empty string
@@ -209,9 +209,10 @@ export default function VocabTrainer() {
                         // }
 
                         return {
-                            word_id: id,
+                            id: id,
                             word: wordText,
-                            word_ipa: String(cw.word_ipa),
+                            uk_ipa: String(cw.uk_ipa || ''),
+                            us_ipa: String(cw.us_ipa || ''),
                             word_meaning: String(cw.word_meaning),
                             audioUrl,
                             word_max_read: String(cw.word_max_read) || '3',
@@ -285,7 +286,7 @@ export default function VocabTrainer() {
     // Update course word function
     const updateCourseWord = (wordId: string, field: keyof LessonWord, value: string) => {
         setVocabularyData((prevWords) => {
-            const updated = prevWords.map((word) => (word.word_id === wordId ? { ...word, [field]: value } : word))
+            const updated = prevWords.map((word) => (word.id === wordId ? { ...word, [field]: value } : word))
             return updated
         })
     }
@@ -320,6 +321,10 @@ export default function VocabTrainer() {
 
     const openOxford = (text: string) => {
         const url = `https://www.oxfordlearnersdictionaries.com/definition/english/${encodeURIComponent(text)}`;
+        window.open(url, "_blank");
+    };
+    const onImages = (text: string) => {
+        const url = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(text)}`;
         window.open(url, "_blank");
     };
     // Error handling
@@ -390,7 +395,7 @@ export default function VocabTrainer() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-            <TopNavigation lessonName={selectedLesson?.lesson_name} />
+            <TopNavigation lessonName={selectedLesson?.name} />
 
             <main className="mx-auto min-h-[52rem] px-4 py-8 sm:px-6 lg:pb-8 lg:pt-16 flex flex-col space-y-5">
                 <div className="my-3 flex justify-between">
@@ -426,9 +431,12 @@ export default function VocabTrainer() {
                     <CardContent className="p-6 h-fit">
                         <div className="mb-6 flex items-center justify-between bg-gray-50 rounded-lg p-4 h-[30rem] relative">
                             <div className="w-full mx-4 md:mx-8 flex justify-center items-center">
-                                <VocabDisplay currentWord={currentWord} />
+                                <VocabDisplay currentWord={currentWord} ipa={dialect === 'uk' ? currentWord.uk_ipa : currentWord.us_ipa} />
                             </div>
-                            <div className="absolute top-[100%] right-2 text-gray-500 transition-transform hover:-translate-y-0.5 hover:cursor-pointer italic hover:text-blue-500" onClick={() => openOxford(currentWord.word)}>oxford</div>
+                            <div className="absolute top-[97%] right-2">
+                                <div className="text-gray-500 transition-transform hover:-translate-y-0.5 hover:cursor-pointer italic hover:text-blue-500" onClick={() => openOxford(currentWord.word)} title="go to oxford dictionary">oxford</div>
+                                <div className="text-gray-500 transition-transform hover:-translate-y-0.5 hover:cursor-pointer italic hover:text-blue-500" onClick={()=>onImages(currentWord.word)} title="go to google images">Images</div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

@@ -2,6 +2,8 @@ export interface Curriculum {
     id: string
     name: string
     description?: string
+    curriculum_name?: string
+    title?: string
 }
 
 export interface CustomCurriculumItem {
