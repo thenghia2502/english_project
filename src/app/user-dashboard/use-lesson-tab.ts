@@ -1,5 +1,4 @@
 import { useLessons } from "@/hooks";
-import { Lesson } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -56,7 +55,7 @@ export function useLessonTab() {
         if (meta.totalPages) return meta.totalPages
         return Math.max(1, Math.ceil(meta.total / (meta.limit || limit)))
     }, [meta?.total, meta?.totalPages, meta?.limit, limit])
-    const startLearning = (lesson: Lesson) => {
+    const startLearning = (lesson: { id: string }) => {
         router.push(`/hoctu?lessonId=${lesson.id}`)
     }
 

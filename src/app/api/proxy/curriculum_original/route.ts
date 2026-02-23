@@ -92,9 +92,35 @@ export async function GET() {
                 'Authorization': `Bearer ${accessToken}`
             }
         });
-        const raw = await response.json();
-        return new Response(JSON.stringify(raw), { status: 200, headers: { 'Cache-Control': 'no-store' } })
+        const raw = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            return new Response(
+                JSON.stringify(raw ?? { error: 'Upstream request failed' }),
+                {
+                    status: response.status,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store'
+                    }
+                }
+            )
+        }
+
+        return new Response(JSON.stringify(raw), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+            }
+        })
     } catch {
-        return new Response("Error in curriculum proxy endpoint", { status: 500 });
+        return new Response(JSON.stringify({ error: 'Error in curriculum proxy endpoint' }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+            }
+        });
     }
 }

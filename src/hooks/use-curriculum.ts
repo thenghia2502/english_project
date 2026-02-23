@@ -18,33 +18,35 @@ const fetchCurriculumOriginalList = async (page?: number, limit?: number, search
   const data = await response.json()
 
   // If the proxy already returned a pagination object
-  if (data && Array.isArray(data.items) && typeof data.page === 'number') return data as CurriculumPagination
+  // if (data && Array.isArray(data.items) && typeof data.page === 'number') return data as CurriculumPagination
 
   // If wrapped under data.data
-  if (data && data.data && Array.isArray(data.data.items)) return data.data as CurriculumPagination
+  // if (data && data.data && Array.isArray(data.data.items)) return data.data as CurriculumPagination
 
   // If backend returned a plain array, wrap it
-  if (Array.isArray(data)) {
-    return {
-      items: data as Curriculum[],
-      total: data.length,
-      page: 1,
-      limit: data.length,
-      totalPages: 1,
-    }
-  }
+  // if (Array.isArray(data)) {
+  //   return {
+  //     data: data as Curriculum[],
+  //     total: data.length,
+  //     page: 1,
+  //     limit: data.length,
+  //     totalPages: 1,
+  //     meta: data.meta
+  //   }
+  // }
 
   // If payload contains items but missing metadata, fill defaults
-  if (data && Array.isArray(data.items)) {
-    const items = data.items as Curriculum[]
-    const total = data.total ?? items.length
-    const limit = data.limit ?? items.length
-    const page = data.page ?? 1
-    const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit))
-    return { items, total, page, limit, totalPages }
-  }
+  // if (data && Array.isArray(data.items)) {
+  //   const items = data.items as Curriculum[]
+  //   const total = data.total ?? items.length
+  //   const limit = data.limit ?? items.length
+  //   const page = data.page ?? 1
+  //   const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit))
+  //   return { data, total, page, limit, totalPages, meta: data.meta }
+  // }
 
-  return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
+  // return { data: [], total: 0, page: 1, limit: 0, totalPages: 0, meta: undefined }
+  return data
 }
 
 const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[]): Promise<CurriculumPagination> => {
@@ -72,11 +74,12 @@ const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQu
   // If backend returned a plain array, wrap it
   if (Array.isArray(data)) {
     return {
-      items: data as Curriculum[],
+      data: data as Curriculum[],
       total: data.length,
       page: 1,
       limit: data.length,
       totalPages: 1,
+      meta: data.meta
     }
   }
 
@@ -87,10 +90,10 @@ const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQu
     const limit = data.limit ?? items.length
     const page = data.page ?? 1
     const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit))
-    return { items, total, page, limit, totalPages }
+    return { data, total, page, limit, totalPages, meta: data.meta }
   }
 
-  return { items: [], total: 0, page: 1, limit: 0, totalPages: 0 }
+  return { data: [], total: 0, page: 1, limit: 0, totalPages: 0, meta: undefined }
 }
 
 const fetchCurriculumCustomById = async (id: string): Promise<Curriculum> => {
@@ -285,8 +288,8 @@ export const useDeleteCurriculumCustom = () => {
       queryClient.setQueriesData({ queryKey: curriculumKeys.customLists() }, (old: unknown) => {
         if (!old) return old
         const oldData = old as CurriculumPagination
-        if (Array.isArray(oldData.items)) {
-          return { ...oldData, items: oldData.items.filter((item: Curriculum) => item.id !== deletedId) }
+        if (Array.isArray(oldData.data)) {
+          return { ...oldData, data: oldData.data.filter((item: Curriculum) => item.id !== deletedId) }
         }
         return old
       })

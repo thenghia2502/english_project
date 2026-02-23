@@ -4,6 +4,25 @@ import { Badge } from "@/components/ui/badge"
 import { Clock, Play, Search } from "lucide-react"
 import { useLessonTab } from "./use-lesson-tab"
 import { AppPagination } from "./pagination"
+import { LessonWord } from "@/lib/types"
+
+type LessonLevel = {
+    id: string
+    name: string
+}
+
+type DashboardLesson = {
+    id: string
+    name: string
+    category?: string
+    description?: string
+    levels: LessonLevel[]
+    words: LessonWord[]
+    duration: number
+    created_at: string
+    updated_at: string
+    progress: number | string
+}
 
 function msToHMSLabel(s: number): string {
     if (s <= 0) return '0 sec';
@@ -111,14 +130,14 @@ export default function LessonsTab() {
                     <div className="col-span-full text-center py-8">
                         <p className="text-muted-foreground">Loading lessons...</p>
                     </div>
-                ) : data?.data.map((lesson) => (
+                ) : data?.data.map((lesson: DashboardLesson) => (
                     <Card key={lesson.id} className="hover:shadow-lg transition-shadow">
                         <CardHeader>
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1">
                                     <CardTitle className="text-xl mb-1">{lesson.name}</CardTitle>
                                     <div className="flex gap-2">
-                                        {lesson.levels.map((level) => (
+                                        {lesson.levels.map((level: LessonLevel) => (
                                             <Badge key={level.id} className={`${getLevelColor(level.name)} border-0`}>{level.name}</Badge>
                                         ))}
                                     </div>
@@ -134,7 +153,7 @@ export default function LessonsTab() {
                                 <div>
                                     {(() => {
                                         const words = lesson.words
-                                        return words.slice(0, 2).map((cw) => (
+                                        return words.slice(0, 2).map((cw: LessonWord) => (
                                             <Badge key={cw.id} variant="outline" className="text-xs text-gray-900">
                                                 {cw.word}
                                             </Badge>
@@ -173,7 +192,7 @@ export default function LessonsTab() {
                                 </div>
                             </div>
 
-                            <Button className="w-full gap-2 mt-2" onClick={() => startLearning(lesson)}>
+                            <Button className="w-full gap-2 mt-2" onClick={() => startLearning({ id: lesson.id } as any)}>
                                 <Play className="w-4 h-4" />
                                 {Number(lesson.progress) === 100 ? "Review" : Number(lesson.progress) === 0 ? "Start" : "Continue"}
                             </Button>

@@ -16,8 +16,6 @@ export function useCurriculumOriginalManagement() {
     // Fetch data using existing hook with pagination
     const { data, isLoading: curriculumsLoading, error: curriculumsError, refetch } = useCurriculumOriginal(currentPage, pageSize, searchTerm)
     
-    // Extract curriculums from pagination data with memoization
-    const curriculums = useMemo(() => data?.items || [], [data?.items])
     
     // Reset to page 1 when search term changes
     useEffect(() => {
@@ -26,13 +24,13 @@ export function useCurriculumOriginalManagement() {
     
     // Initialize selected IDs with all curriculums when data loads
     useEffect(() => {
-        if (curriculums.length > 0 && selectedIds.length === 0) {
-            setSelectedIds(curriculums.map(c => c.id))
+        if (data?.data && data.data.length > 0 && selectedIds.length === 0) {
+            setSelectedIds(data.data.map(c => c.id))
         }
-    }, [curriculums, selectedIds.length])
+    }, [data?.data, selectedIds.length])
     
     // Since we're using server-side search, don't filter again client-side
-    const filteredCurriculums = curriculums
+    const filteredCurriculums = data?.data || []
     
     // Get selected curriculums
     const selectedCurriculums = useMemo(() => {
@@ -92,17 +90,19 @@ export function useCurriculumOriginalManagement() {
             total,
             selected,
             filtered,
-            totalUnits: curriculums.reduce((sum, c) => sum + (c.list_unit?.length || 0), 0),
-            totalLevels: curriculums.reduce((sum, c) => sum + (c.list_level?.length || 0), 0),
+            totalUnits: filteredCurriculums.reduce((sum, c) => sum + (c.list_unit?.length || 0), 0),
+            totalLevels: filteredCurriculums.reduce((sum, c) => sum + (c.list_level?.length || 0), 0),
             totalPages: data?.totalPages
         }
-    }, [data?.total, data?.totalPages, selectedIds.length, filteredCurriculums.length, curriculums])
+    }, [data?.total, data?.totalPages, selectedIds.length, filteredCurriculums.length, filteredCurriculums])
     
+    const meta = data?.meta
     return {
         // Data
         curriculums: filteredCurriculums,
         selectedCurriculums,
         stats,
+        meta,
         
         // Pagination
         currentPage,

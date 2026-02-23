@@ -32,7 +32,20 @@ export async function GET(request: Request) {
         const search = url.search || ''
         const outgoing = `http://localhost:4000/api/curriculum_custom${search}`
         const response = await fetch(outgoing, { cache: 'no-store' });
-        const raw = await response.json();
+        const raw = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            return new Response(
+                JSON.stringify(raw ?? { error: 'Upstream request failed' }),
+                {
+                    status: response.status,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-store'
+                    }
+                }
+            )
+        }
 
         // Try common unwrap locations: raw, raw.data, raw.data.data
         const candidates = [raw, raw?.data, raw?.data?.data];
@@ -72,8 +85,20 @@ export async function GET(request: Request) {
             if (parsed.success) return new Response(JSON.stringify(parsed.data), { status: 200, headers: { 'Cache-Control': 'no-store' } })
         }
 
-        return new Response(JSON.stringify({ items: [] }), { status: 200, headers: { 'Cache-Control': 'no-store' } })
+        return new Response(JSON.stringify({ items: [] }), {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+            }
+        })
     } catch {
-        return new Response("Error in curriculum proxy endpoint:", { status: 500 });
+        return new Response(JSON.stringify({ error: 'Error in curriculum proxy endpoint' }), {
+            status: 500,
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store'
+            }
+        });
     }
 }
