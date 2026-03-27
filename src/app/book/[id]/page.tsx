@@ -1,4 +1,8 @@
+'use client'
+import { use } from "react"
 import { BookReader } from "./bookReader"
+import { useBookPage } from "./useBookPage"
+import Loading from '@/components/ui/loading'
 
 // Mock data - in production this would come from a database
 const bookData = [{
@@ -88,7 +92,7 @@ const bookData = [{
             pdfUrl: "https://drive.google.com/file/d/1m_z5DgUSeeBtGEWyLmzt0OjAvRZlHvO9/view?usp=drive_link",
         },
     ],
-    id_wb:"english-grammar-in-use-wb"
+    id_wb: "english-grammar-in-use-wb"
 },
 {
     id: "english-grammar-in-use-2",
@@ -171,14 +175,23 @@ const bookData = [{
             pdfUrl: "https://drive.google.com/file/d/1m_z5DgUSeeBtGEWyLmzt0OjAvRZlHvO9/view?usp=drive_link",
         },
     ],
-    id_wb:"english-grammar-in-use-2-wb"
+    id_wb: "english-grammar-in-use-2-wb"
 }
 ]
 
-export default async function BookPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id: bookId } = await params
-    const book = bookData.find((b) => b.id === bookId)
-
+export default function BookPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id: bookId } = use(params)
+    const { data: book, isLoading } = useBookPage(bookId)
+    if (isLoading) {
+        return (
+            <Loading
+                message="Đang tải sách..."
+                variant="full-page"
+                className='bg-white'
+            />
+        )
+    }
+    
     if (!book) {
         return (
             <div className="flex h-screen items-center justify-center bg-white text-gray-900">
@@ -190,5 +203,37 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
         )
     }
 
-    return <BookReader book={book} />
+    const normalizedBook: Parameters<typeof BookReader>[0]['book'] = {
+        id: book.id,
+        name: book.name,
+        created_at: book.created_at ?? '',
+        updated_at: book.updated_at ?? '',
+        description: book.description ?? '',
+        units: Array.isArray(book.units)
+            ? book.units.map((unit) => {
+                const source = unit as unknown as { link?: string; pdfUrl?: string; pdf_url?: string }
+
+                return {
+                    unit_id: unit.unit_id,
+                    unit_name: unit.unit_name,
+                    unit_order: unit.unit_order ?? 0,
+                    link: source.link ?? source.pdfUrl ?? source.pdf_url ?? '',
+                    level_id: unit.level_id,
+                    level_name: unit.level_name,
+                    level_description: unit.level_description ?? '',
+                    level_code: unit.level_code,
+                }
+            })
+            : [],
+        levels: Array.isArray(book.levels)
+            ? book.levels.map((level) => ({
+                level_id: level.level_id,
+                level_code: level.level_code,
+                level_name: level.level_name,
+                level_description: level.level_description ?? '',
+            }))
+            : [],
+    }
+
+    return <BookReader book={normalizedBook} />
 }

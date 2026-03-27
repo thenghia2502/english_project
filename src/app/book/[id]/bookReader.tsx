@@ -9,6 +9,8 @@ import { BookOpen, Save, ChevronLeft, ChevronRight } from "lucide-react"
 import type { BookUnit, BookNote } from "../types"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
+import { useNote, useUpsertNote } from "@/hooks/use-notes"
+import { useGetWorkbook } from "@/hooks/use-curriculum"
 
 // Dynamic import PDFViewer
 const PDFViewer = dynamic(
@@ -38,16 +40,48 @@ const NotesEditor = dynamic(
 interface BookReaderProps {
   book: {
     id: string
-    title: string
-    author: string
-    units: BookUnit[]
-    id_wb: string
+    name: string
+    created_at: string
+    updated_at: string
+    description: string
+    "units":
+    {
+      "unit_id": string,
+      "unit_name": string,
+      "unit_order": number,
+      "link": string,
+      "level_id": string,
+      "level_name": string,
+      "level_description": string,
+      "level_code": string
+    }[]
+    ,
+    "levels":
+    {
+      "level_id": string,
+      "level_code": string,
+      "level_name": string,
+      "level_description": string
+    }[]
+
   }
 }
 
 export function BookReader({ book }: BookReaderProps) {
   const router = useRouter()
-  const [selectedUnit, setSelectedUnit] = useState<BookUnit>(book.units[0])
+  const upsertNoteMutation = useUpsertNote()
+  const workbookQuery = useGetWorkbook(book?.id)
+  const [selectedUnit, setSelectedUnit] = useState<{
+      "unit_id": string,
+      "unit_name": string,
+      "unit_order": number,
+      "link": string,
+      "level_id": string,
+      "level_name": string,
+      "level_description": string,
+      "level_code": string
+    } | null>(book?.units?.[0] ?? null)
+  const noteQuery = useNote(selectedUnit?.unit_id)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [savedNotes, setSavedNotes] = useState<BookNote[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -58,80 +92,74 @@ export function BookReader({ book }: BookReaderProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Load note when component mounts or book changes
   useEffect(() => {
-    const loadNote = async () => {
-      try {
-        const response = await fetch(`http://localhost:4000/api/notes/${book.id}/${selectedUnit.id}`)
-        if (response.ok) {
-          const result = await response.json()
-          if (result.success && result.data) {
-            // Load all notes for this book (data is an object with unitId as keys)
-            const loadedNotes: Record<string, string> = {}
-            Object.keys(result.data).forEach(unitId => {
-              loadedNotes[unitId] = result.data[unitId].content
-            })
-            const loadedText = result.data.content || "";
-            const loadedTitle = result.data.title || "";
-            setTitle(loadedTitle)
-            setText(loadedText)
-            setNotes(loadedNotes)
-          }
-        } else if (response.status === 404) {
-          setText("");
-          setTitle("");
-          // Note doesn't exist yet, that's ok
-          console.log('No existing notes found for this book')
-        } else {
-          console.error('Failed to load notes:', response.status)
-        }
-      } catch (error) {
-        // Server might not be running or network error
-        // Just log it, don't block the UI
-        console.log('Could not connect to notes server:', error)
-      }
+    if (!selectedUnit && Array.isArray(book?.units) && book.units.length > 0) {
+      setSelectedUnit(book.units[0])
+    }
+  }, [book, selectedUnit])
+
+  // Load note from query when unit changes
+  useEffect(() => {
+    if (noteQuery.isLoading) return
+
+    if (noteQuery.isError) {
+      console.error('Failed to load notes:', noteQuery.error)
+      return
     }
 
-    loadNote()
-  }, [book.id, selectedUnit.id])
+    const data = noteQuery.data as
+      | {
+          data?: { title?: string; content?: string }
+          title?: string
+          content?: string
+        }
+      | null
+      | undefined
+
+    const noteData = data?.data ?? data
+    const loadedText = noteData?.content || ""
+    const loadedTitle = noteData?.title || ""
+
+    setText(loadedText)
+    setTitle(loadedTitle)
+    if (!selectedUnit) return
+    setNotes((prev) => ({
+      ...prev,
+      [selectedUnit.unit_id]: loadedText,
+    }))
+  }, [noteQuery.data, noteQuery.error, noteQuery.isError, noteQuery.isLoading, selectedUnit?.unit_id])
 
   const handleSaveNote = async () => {
-    if (!notes[selectedUnit.id]?.trim()) return
+    if (!selectedUnit) return
+    if (!text.trim()) return
 
     setIsSaving(true)
     setSaveMessage(null)
 
     try {
-      const response = await fetch('http://localhost:4000/api/notes/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookId: book.id,
-          unitId: selectedUnit.id,
-          content: notes[selectedUnit.id],
-          title
-        }),
+      const result = await upsertNoteMutation.mutateAsync({
+        unitId: selectedUnit.unit_id,
+        content: text,
       })
 
-      const result = await response.json()
-
-      if (result.success) {
+      if ((result as { success?: boolean } | null)?.success !== false) {
         const newNote: BookNote = {
           id: Date.now().toString(),
-          unitId: selectedUnit.id,
-          content: notes[selectedUnit.id],
+          unitId: selectedUnit.unit_id,
+          content: text,
           timestamp: new Date(),
-          title: title 
+          title: title
         }
         setSavedNotes([...savedNotes, newNote])
-        setSaveMessage({ type: 'success', text: `Note saved for ${selectedUnit.title}!` })
+        setSaveMessage({ type: 'success', text: `Note saved for ${selectedUnit.unit_name}!` })
 
         // Clear success message after 3 seconds
         setTimeout(() => setSaveMessage(null), 3000)
       } else {
-        setSaveMessage({ type: 'error', text: result.error || 'Failed to save note' })
+        setSaveMessage({
+          type: 'error',
+          text: (result as { error?: string } | null)?.error || 'Failed to save note',
+        })
       }
     } catch (error) {
       console.error('Error saving note:', error)
@@ -141,6 +169,30 @@ export function BookReader({ book }: BookReaderProps) {
     }
   }
 
+  const handleGetWorkbook = () => {
+    const workbook = workbookQuery.data
+
+    const rawRef = workbook?.workbookId || workbook?.workbook_id || workbook?.id_wb || workbook?.workbookUrl || workbook?.url || workbook?.id
+
+    if (!rawRef) {
+      console.error('Workbook id/url is not available')
+      return
+    }
+
+    const match = rawRef.match(/\/book\/wb\/([^/?#]+)/)
+    const workbookId = match?.[1] || rawRef.split('/').filter(Boolean).pop() || rawRef
+
+    router.push(`/book/wb/${workbookId}`)
+  }
+
+  if (!book || !Array.isArray(book.units) || book.units.length === 0 || !selectedUnit) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-gray-900">
+        <p className="text-sm text-muted-foreground">No units available for this book.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen flex-col bg-white text-gray-900">
       {/* Header */}
@@ -148,8 +200,8 @@ export function BookReader({ book }: BookReaderProps) {
         <div className="flex items-center gap-3">
           <BookOpen className="h-6 w-6 text-primary" />
           <div>
-            <h1 className="text-xl font-bold">{book.title}</h1>
-            <p className="text-sm text-muted-foreground">{book.author}</p>
+            <h1 className="text-xl font-bold">{book.name}</h1>
+            <p className="text-sm text-muted-foreground">author</p>
           </div>
         </div>
       </header>
@@ -161,7 +213,7 @@ export function BookReader({ book }: BookReaderProps) {
           <Button
             variant="outline"
             size="icon"
-            className="mt-4 z-10 bg-white shadow-lg hover:bg-gray-100"
+            className="mt-4 z-10 bg-white shadow-lg hover:bg-primary "
             onClick={() => setIsLeftPanelOpen(true)}
           >
             <ChevronRight className="" />
@@ -175,25 +227,25 @@ export function BookReader({ book }: BookReaderProps) {
               <div className="p-4 pt-0">
                 <div className="flex items-center">
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Units</h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="flex-1 justify-end"
+                  <button
+                    // variant="ghost"
+                    // size="icon"
+                    className="flex-1 justify-end h-10 w-10"
                     onClick={() => setIsLeftPanelOpen(false)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
                 <div className="space-y-2">
                   {book.units.map((unit) => (
-                    <React.Fragment key={unit.id}>
+                    <React.Fragment key={unit.unit_id}>
                       <Button
-                        key={unit.id}
-                        variant={selectedUnit.id === unit.id ? "default" : "ghost"}
-                        className={`w-full justify-start text-left hover:bg-gray-300 cursor-pointer ${selectedUnit.id === unit.id ? "bg-gray-200" : ""}`}
+                        key={unit.unit_id}
+                        variant={selectedUnit?.unit_id === unit.unit_id ? "default" : "ghost"}
+                        className={`w-full justify-start text-left hover:bg-gray-300 cursor-pointer ${selectedUnit?.unit_id === unit.unit_id ? "bg-primary text-white" : ""}`}
                         onClick={() => setSelectedUnit(unit)}
                       >
-                        <span className="line-clamp-2 text-sm">{unit.title}</span>
+                        <span className="line-clamp-2 text-sm">{unit.unit_name}</span>
                       </Button>
                       {/* <Button
                       variant={"default"}
@@ -205,11 +257,12 @@ export function BookReader({ book }: BookReaderProps) {
                     </React.Fragment>
                   ))}
                   <Button
-                    variant={"default"}
+                    variant={"ghost"}
                     className="w-full justify-start text-left hover:bg-gray-300 cursor-pointer"
-                    onClick={() => router.push(`/book/wb/${book.id_wb}`)}
+                    onClick={handleGetWorkbook}
+                    disabled={workbookQuery.isLoading}
                   >
-                    Xem sách bài tập
+                    {workbookQuery.isLoading ? 'Đang tải sách bài tập...' : 'Xem sách bài tập'}
                   </Button>
                 </div>
               </div>
@@ -217,7 +270,7 @@ export function BookReader({ book }: BookReaderProps) {
           </aside>
         )}
 
-        {/* Middle Panel - PDF Viewer */}
+        {/* Middle Panel - PDF Viewer
         <main className="w-[1100px] bg-muted/10">
           <div className="h-full p-4">
             <Card className="h-full">
@@ -226,11 +279,33 @@ export function BookReader({ book }: BookReaderProps) {
               </CardContent>
             </Card>
           </div>
+        </main> */}
+
+        {/* Middle Panel - PDF Viewer - Fixed width */}
+        <main className="flex-1 flex-shrink-0 bg-muted/10">
+          <div className="h-full p-4">
+            <Card className="h-full">
+              <CardContent className="h-[calc(100%)] p-0">
+                <PDFViewer pdfUrl={selectedUnit.link} title={selectedUnit.unit_name} />
+              </CardContent>
+            </Card>
+          </div>
         </main>
+
+        {!isRightPanelOpen && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="mt-4 z-10 bg-white shadow-lg hover:bg-primary "
+            onClick={() => setIsRightPanelOpen(true)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        )}
 
         {/* Right Panel - Notes */}
         {isRightPanelOpen && (
-          <aside className="flex-1 border-l bg-background">
+          <aside className="flex-1 max-w-1/3 flex-shrink-0 border-l bg-background flex flex-col">
             <div className="flex h-full flex-col">
               <div className="border-b flex ">
                 <Input
@@ -254,7 +329,13 @@ export function BookReader({ book }: BookReaderProps) {
                 <div className="mb-3 flex-1">
                   <NotesEditor
                     value={text}
-                    onChange={(content) => setText(content)}
+                    onChange={(content) => {
+                      setText(content)
+                      setNotes((prev) => ({
+                        ...prev,
+                        [selectedUnit.unit_id]: content,
+                      }))
+                    }}
                     placeholder="Write your notes here..."
                     className="bg-white "
                   />
@@ -263,7 +344,7 @@ export function BookReader({ book }: BookReaderProps) {
                 <Button
                   onClick={handleSaveNote}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white cursor-pointer"
-                  disabled={!notes[selectedUnit.id]?.trim() || isSaving}
+                  disabled={!text.trim() || isSaving}
                 >
                   <Save className="mr-2 h-4 w-4" />
                   {isSaving ? 'Saving...' : 'Save Note'}

@@ -1,7 +1,7 @@
 "use client"
 
 interface PDFViewerProps {
-  pdfUrl: string
+  pdfUrl?: string | null
   title: string
 }
 
@@ -17,7 +17,11 @@ function extractGoogleDriveFileId(url: string): string | null {
   return null
 }
 
-function getGoogleDriveEmbedUrl(url: string): string {
+function getGoogleDriveEmbedUrl(url?: string | null): string | null {
+  if (!url || !url.trim()) {
+    return null
+  }
+
   const fileId = extractGoogleDriveFileId(url)
   if (fileId) {
     return `https://drive.google.com/file/d/${fileId}/preview`
@@ -40,12 +44,18 @@ export function PDFViewer({ pdfUrl, title }: PDFViewerProps) {
 
       {/* PDF Viewer + Canvas Overlay */}
       <div className="relative flex-1 overflow-hidden bg-muted/20">
-        <iframe
-          src={embedUrl}
-          className="h-full w-full border-0 "
-          title={title}
-          // allow="autoplay"
-        />
+        {embedUrl ? (
+          <iframe
+            src={embedUrl}
+            className="h-full w-full border-0 "
+            title={title}
+            // allow="autoplay"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <p className="text-sm text-muted-foreground">No PDF link available for this unit.</p>
+          </div>
+        )}
       </div>
     </div>
   )

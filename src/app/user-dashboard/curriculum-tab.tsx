@@ -197,7 +197,7 @@ export default function CurriculumTab() {
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-6">Created {curriculum.created_at}</p>
               <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button className="flex-1 bg-primary hover:bg-primary/90 text-white text-sm font-bold py-2 rounded-lg transition-colors" onClick={() => routerPush(`/lesson/create?id=${curriculum.id}`)}>Create Lesson</button>
-                <button className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold py-2 rounded-lg transition-colors">View Details</button>
+                <button className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold py-2 rounded-lg transition-colors" onClick={() => routerPush(`/book/${curriculum.id}`)}>View Details</button>
               </div>
             </div>
           </div>

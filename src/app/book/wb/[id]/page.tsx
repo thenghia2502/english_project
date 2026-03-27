@@ -1,3 +1,6 @@
+'use client'
+import { use } from "react"
+import { useBookPage } from "../../[id]/useBookPage"
 import ControlExercises from "./controlExcerises"
 
 // Mock data - in production this would come from a database
@@ -179,9 +182,17 @@ const bookData = [{
 }
 ]
 
-export default async function BookPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id: bookId } = await params
-    const book = bookData.find((b) => b.id === bookId)
+export default function BookPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id: bookId } = use(params)
+  const { data: book, isLoading } = useBookPage(bookId)
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-white text-gray-900">
+        <p className="text-sm text-muted-foreground">Loading workbook...</p>
+      </div>
+    )
+  }
 
     if (!book) {
         return (
@@ -194,5 +205,23 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
         )
     }
 
-    return <ControlExercises book={book} />
+    const normalizedWorkbook: Parameters<typeof ControlExercises>[0]['book'] = {
+      id: book.id,
+      title: book.name,
+      author: 'author',
+      units: Array.isArray(book.units)
+        ? book.units.map((unit) => {
+            const source = unit as unknown as { link?: string; pdfUrl?: string; pdf_url?: string; unit_title?: string }
+
+            return {
+              id: unit.unit_id,
+              title: source.unit_title ?? unit.unit_name,
+              pdfUrl: source.link ?? source.pdfUrl ?? source.pdf_url ?? '',
+            }
+          })
+        : [],
+      id_sb: book.id,
+    }
+
+    return <ControlExercises book={normalizedWorkbook} />
 }

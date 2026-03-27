@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { Curriculum, CurriculumPagination } from '@/lib/types'
 import { useCurriculumOriginalStore } from '@/stores/curriculum-original-store'
 import { useCurriculumCustomStore } from '@/stores/curriculum-custom-store'
+import { apiFetch } from './apiFetch'
 
 const fetchCurriculumOriginalList = async (page?: number, limit?: number, searchQuery?: string): Promise<CurriculumPagination> => {
   const qs: string[] = []
@@ -11,7 +12,7 @@ const fetchCurriculumOriginalList = async (page?: number, limit?: number, search
   if (searchQuery) qs.push(`search_text=${encodeURIComponent(searchQuery)}`)
   
   const url = `/api/proxy/curriculum_original${qs.length ? '?' + qs.join('&') : ''}`
-  const response = await fetch(url)
+  const response = await apiFetch(url)
   if (!response.ok) {
     throw new Error('Failed to fetch curriculums')
   }
@@ -59,7 +60,7 @@ const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQu
     curriculumOriginalIds.forEach(id => qs.push(`curriculum_original_id=${encodeURIComponent(id)}`))
   }
   const url = `/api/proxy/curriculum_custom${qs.length ? '?' + qs.join('&') : ''}`
-  const response = await fetch(url)
+  const response = await apiFetch(url)
   if (!response.ok) {
     throw new Error('Failed to fetch curriculums')
   }
@@ -143,6 +144,38 @@ const deleteCurriculumCustom = async (id: string): Promise<void> => {
   })
   if (!response.ok) throw new Error('Failed to delete curriculum')
 }
+
+export interface WorkbookResponse {
+  workbookUrl?: string
+  workbookId?: string
+  workbook_id?: string
+  id_wb?: string
+  url?: string
+  id: string
+  [key: string]: unknown
+}
+
+const getWorkbook = async (curriculumId: string): Promise<WorkbookResponse> => {
+  const response = await fetch(`/api/proxy/curriculum_original/${encodeURIComponent(curriculumId)}/workbooks?idCurriculum=${encodeURIComponent(curriculumId)}`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch workbook for curriculum ${curriculumId}`)
+  }
+  const data = await response.json()
+
+  if (Array.isArray(data) && data.length > 0) {
+    return data[0] as WorkbookResponse
+  }
+
+  if (data && typeof data === 'object' && 'data' in data && data.data) {
+    if (Array.isArray(data.data) && data.data.length > 0) {
+      return data.data[0] as WorkbookResponse
+    }
+    return data.data as WorkbookResponse
+  }
+
+  return (data ?? {}) as WorkbookResponse
+}
+
 
 // Query keys
 export const curriculumKeys = {
@@ -316,4 +349,14 @@ export const useDeleteCurriculumCustom = () => {
     },
     retry: 1, // Only retry once on failure
   })
+
 }
+
+export const useGetWorkbook = (curriculumId: string) => {
+  return useQuery<WorkbookResponse, Error>({
+    queryKey: [...curriculumKeys.detail(curriculumId), 'workbook'],
+    queryFn: () => getWorkbook(curriculumId),
+    enabled: !!curriculumId,
+  })
+}
+

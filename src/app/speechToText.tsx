@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 // import RichTextEditor from "@/components/RichTextEditor";
 import { Mic, MicOff, RefreshCcw, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNote, useUpsertNote } from "@/hooks/use-notes";
 
 // Type definitions for Web Speech API
 interface SpeechRecognitionEvent extends Event {
@@ -74,68 +75,70 @@ export default function SpeechToText({ onTextChange, bookId, unitId, saveNotesRe
   const [enabledSave, setEnabledSave] = useState(false);
   // const [title, setTitle] = useState(`${bookId}-${unitId}`); // Tên người dùng mặc định
   // const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const noteQuery = useNote(unitId);
+  const upsertNoteMutation = useUpsertNote();
 
   const internalSaveRef = useRef<(() => Promise<boolean>) | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const originalTextRef = useRef<string>(""); // Lưu text gốc khi load
 
-  // Fetch notes when unitId changes
+  // Fetch notes from hook when unitId changes
   useEffect(() => {
-    const fetchNotes = async () => {
-      if (!bookId || !unitId) return;
+    if (!bookId || !unitId) return;
+    if (noteQuery.isLoading) return;
 
-      setIsLoading(true);
-      setError("");
+    setError("");
 
-      try {
-        const response = await fetch(`http://localhost:4000/api/notes/${bookId}/${unitId}`);
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          const loadedText = result.data.content || "";
-          const loadedTitle = result.data.title || "";
-          setText(loadedText);
-          setTitle(loadedTitle);
-          setAccumulatedText(loadedText);
-          originalTextRef.current = loadedText; // Lưu text gốc
-          setEnabledSave(false); // Disable save vì chưa có thay đổi
-
-          if (onTextChange) {
-            onTextChange(loadedText);
-          }
-
-          console.log("📖 Loaded notes:", loadedText);
-        } else {
-          // No notes found - reset text
-          setText("");
-          setTitle("");
-          setAccumulatedText("");
-          originalTextRef.current = ""; // Reset text gốc
-          setEnabledSave(false); // Disable save
-          if (onTextChange) {
-            onTextChange("");
-          }
-          console.log("ℹ️ No notes found for this unit");
-        }
-      } catch (err) {
-        console.error("❌ Error loading notes:", err);
-        // Don't show error to user if notes don't exist yet
-        // Just reset the text
-        setText("");
-        setAccumulatedText("");
-        originalTextRef.current = ""; // Reset text gốc
-        setEnabledSave(false); // Disable save
-        if (onTextChange) {
-          onTextChange("");
-        }
-      } finally {
-        setIsLoading(false);
+    if (noteQuery.isError) {
+      console.error("❌ Error loading notes:", noteQuery.error);
+      setText("");
+      setTitle("");
+      setAccumulatedText("");
+      originalTextRef.current = "";
+      setEnabledSave(false);
+      if (onTextChange) {
+        onTextChange("");
       }
-    };
+      return;
+    }
 
-    fetchNotes();
-  }, [bookId, unitId, onTextChange, setTitle]);
+    const result = noteQuery.data as
+      | {
+          data?: { title?: string; content?: string };
+          title?: string;
+          content?: string;
+        }
+      | null
+      | undefined;
+
+    const noteData = result?.data ?? result;
+
+    if (noteData?.content !== undefined || noteData?.title !== undefined) {
+      const loadedText = noteData?.content || "";
+      const loadedTitle = noteData?.title || "";
+      setText(loadedText);
+      setTitle(loadedTitle);
+      setAccumulatedText(loadedText);
+      originalTextRef.current = loadedText;
+      setEnabledSave(false);
+
+      if (onTextChange) {
+        onTextChange(loadedText);
+      }
+
+      console.log("📖 Loaded notes:", loadedText);
+    } else {
+      setText("");
+      setTitle("");
+      setAccumulatedText("");
+      originalTextRef.current = "";
+      setEnabledSave(false);
+      if (onTextChange) {
+        onTextChange("");
+      }
+      console.log("ℹ️ No notes found for this unit");
+    }
+  }, [bookId, unitId, noteQuery.data, noteQuery.error, noteQuery.isError, noteQuery.isLoading, onTextChange, setTitle]);
 
   // Theo dõi thay đổi của text để enable/disable nút Save
   useEffect(() => {
@@ -339,22 +342,12 @@ export default function SpeechToText({ onTextChange, bookId, unitId, saveNotesRe
     // setSaveMessage(null);
 
     try {
-      const response = await fetch('http://localhost:4000/api/notes/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bookId,
-          unitId,
-          title,
-          content: text,
-        }),
+      const result = await upsertNoteMutation.mutateAsync({
+        unitId,
+        content: text,
       });
 
-      const result = await response.json();
-
-      if (result.success) {
+      if ((result as { success?: boolean } | null)?.success !== false) {
         // setSaveMessage({ type: 'success', text: 'Đã lưu ghi chú thành công!' });
         console.log('💾 Notes saved successfully');
         

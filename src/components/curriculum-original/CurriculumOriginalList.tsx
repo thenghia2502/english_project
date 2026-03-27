@@ -19,7 +19,7 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
   const [currentPage, setCurrentPage] = useState<number>(curriculumOriginal?.page ?? 1)
 
   // Ensure items is always an array to avoid runtime errors
-  const itemsFromProp: Curriculum[] = Array.isArray(curriculumOriginal?.items) ? curriculumOriginal!.items : []
+  const itemsFromProp: Curriculum[] = Array.isArray(curriculumOriginal?.data) ? curriculumOriginal!.data : []
 
   const isServerPaginated = typeof serverPaginated === 'boolean'
     ? serverPaginated
@@ -77,11 +77,11 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
           <div className="col-span-full text-center py-20">Đang tải trang...</div>
         ) : (
           paginated.map((curriculum, index) => (
-            <Card key={`${curriculum.curriculum_id}+${index}`} className="bg-white shadow-sm border border-gray-200 relative">
+            <Card key={`${curriculum.id}+${index}`} className="bg-white shadow-sm border border-gray-200 relative">
               {/* Note: Removed delete button since curriculum_original shouldn't be deletable */}
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold text-black">{curriculum.curriculum_name}</CardTitle>
+                  <CardTitle className="text-base font-semibold text-black">{curriculum.name}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
@@ -98,7 +98,7 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
                     className='bg-green-600 hover:bg-green-700 text-white flex-1'
                     variant="ghost"
                     size="sm"
-                    onClick={() => routerPush(`/lesson/create?id=${curriculum.curriculum_id}`)}
+                    onClick={() => routerPush(`/lesson/create?id=${curriculum.id}`)}
                   >
                     Tạo bài học
                   </Button>
@@ -106,7 +106,7 @@ export default function CurriculumOriginalList({ curriculumOriginal, searchQuery
                     className='bg-blue-600 hover:bg-blue-700 text-white flex-1'
                     variant="ghost"
                     size="sm"
-                    onClick={() => routerPush(`/giaotrinh/view/${curriculum.curriculum_id}`)}
+                    onClick={() => routerPush(`/giaotrinh/view/${curriculum.id}`)}
                   >
                     Xem chi tiết
                   </Button>
