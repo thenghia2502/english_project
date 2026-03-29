@@ -24,7 +24,7 @@ export const useLogin = () => {
             }
             
             console.log(result);
-            router.push('/curriculum');
+            router.push('/user-dashboard');
             
             return result;
         } catch (error) {

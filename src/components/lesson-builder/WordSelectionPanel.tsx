@@ -262,17 +262,19 @@ export default function WordSelectionPanel({
                                 <Table>
                                     <TableBody>
                                         {rootsOriginal.map((root) => {
+                                            const rootKey = root.word_id ?? root.id
+                                            if (!rootKey) return null
                                             const unitData = data[unit.unit_id] || []
                                             const children = unitData.filter(w => w.word_parent_id === root.word_id)
-                                            const isLoading = loadingChildren.has(root.word_id)
+                                            const isLoading = loadingChildren.has(rootKey)
                                             const hasChildren = children.length > 0
                                             const childrenCount = root.children_count ?? 0
                                             const hasChildrenFromAPI = childrenCount > 0
 
                                             return (
-                                                <React.Fragment key={root.word_id || root.id}>
+                                                <React.Fragment key={rootKey}>
                                                     {renderRow(root, unit, 1)}
-                                                    {expandedChildGroups.has(root.word_id) && hasChildren && (
+                                                    {expandedChildGroups.has(rootKey) && hasChildren && (
                                                         <>
                                                             {children.map((c) => renderRow(c, unit, 3))}
                                                             <TableRow className="border-b border-gray-700">
@@ -283,7 +285,7 @@ export default function WordSelectionPanel({
                                                                             e.stopPropagation()
                                                                             setExpandedChildGroups((s) => {
                                                                                 const ns = new Set(s)
-                                                                                ns.delete(root.word_id || root.id)
+                                                                                ns.delete(rootKey)
                                                                                 return ns
                                                                             })
                                                                         }}
@@ -295,14 +297,14 @@ export default function WordSelectionPanel({
                                                             </TableRow>
                                                         </>
                                                     )}
-                                                    {!expandedChildGroups.has(root.word_id || root.id) && hasChildrenFromAPI && (
+                                                    {!expandedChildGroups.has(rootKey) && hasChildrenFromAPI && (
                                                         <TableRow className="border-b border-gray-700">
                                                             <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation()
-                                                                        handleExpandChildren(root.word_id, unit.unit_id)
+                                                                        handleExpandChildren(rootKey, unit.unit_id)
                                                                     }}
                                                                     disabled={isLoading}
                                                                     className="text-sm text-blue-600 hover:underline disabled:text-gray-400"
@@ -316,17 +318,19 @@ export default function WordSelectionPanel({
                                             )
                                         })}
                                         {rootsCustom.map((root) => {
+                                            const rootKey = root.word_id ?? root.id
+                                            if (!rootKey) return null
                                             const unitData = data[unit.unit_id] || []
                                             const children = unitData.filter(w => w.word_parent_id === root.word_id)
-                                            const isLoading = loadingChildren.has(root.word_id)
+                                            const isLoading = loadingChildren.has(rootKey)
                                             const hasChildren = children.length > 0
                                             const childrenCount = (root).children_count ?? 0
                                             const hasChildrenFromAPI = childrenCount > 0
 
                                             return (
-                                                <React.Fragment key={root.word_id}>
+                                                <React.Fragment key={rootKey}>
                                                     {renderRow(root, unit, 2)}
-                                                    {expandedChildGroups.has(root.word_id) && hasChildren && (
+                                                    {expandedChildGroups.has(rootKey) && hasChildren && (
                                                         <>
                                                             {children.map((c) => renderRow(c, unit, 3))}
                                                             <TableRow className="border-b border-gray-700">
@@ -337,7 +341,7 @@ export default function WordSelectionPanel({
                                                                             e.stopPropagation()
                                                                             setExpandedChildGroups((s) => {
                                                                                 const ns = new Set(s)
-                                                                                ns.delete(root.word_id)
+                                                                                ns.delete(rootKey)
                                                                                 return ns
                                                                             })
                                                                         }}
@@ -349,14 +353,14 @@ export default function WordSelectionPanel({
                                                             </TableRow>
                                                         </>
                                                     )}
-                                                    {!expandedChildGroups.has(root.word_id) && hasChildrenFromAPI && (
+                                                    {!expandedChildGroups.has(rootKey) && hasChildrenFromAPI && (
                                                         <TableRow className="border-b border-gray-700">
                                                             <TableCell colSpan={3} className="px-4 py-2 flex justify-center">
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation()
-                                                                        handleExpandChildren(root.word_id, unit.unit_id)
+                                                                        handleExpandChildren(rootKey, unit.unit_id)
                                                                     }}
                                                                     disabled={isLoading}
                                                                     className="text-sm text-blue-600 hover:underline disabled:text-gray-400"

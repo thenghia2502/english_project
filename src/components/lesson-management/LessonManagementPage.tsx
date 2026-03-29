@@ -129,7 +129,7 @@ export default function LessonManagementPage() {
     }
     return (
         <div className="min-h-screen bg-gray-100">
-            <TopNavigation onNavigateToManagement={() => router.push("/curriculum")} />
+            <TopNavigation onNavigateToManagement={() => router.push("/user-dashboard")} />
 
             {/* Error State */}
             {error && !isLoading && (
@@ -140,7 +140,7 @@ export default function LessonManagementPage() {
                     message="Đã xảy ra lỗi khi tải danh sách khóa học. Vui lòng thử lại."
                     errorDetails={error}
                     onRetry={() => window.location.reload()}
-                    onGoBack={() => router.push("/curriculum")}
+                    onGoBack={() => router.push("/user-dashboard")}
                     onGoHome={() => router.push("/")}
                 />
             )}
@@ -152,9 +152,9 @@ export default function LessonManagementPage() {
                     pageType="quan-ly-bai-hoc"
                     title="Chưa có bài học nào"
                     message="Bạn chưa tạo bài học nào. Hãy chọn giáo trình bạn muốn học và tạo bài học đầu tiên để bắt đầu."
-                    onActionButton={() => router.push("/curriculum")}
+                    onActionButton={() => router.push("/user-dashboard")}
                     labelActionButton="Tạo bài học mới"
-                    onGoBack={() => router.push("/curriculum")}
+                    onGoBack={() => router.push("/user-dashboard")}
                     onGoHome={() => router.push("/")}
                 />
             )}

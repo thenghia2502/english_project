@@ -136,7 +136,9 @@ export const useUpdateWord = () => {
     mutationFn: updateWord,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: wordKeys.lists() })
-      queryClient.setQueryData(wordKeys.detail(data.id), data)
+      if (data.id) {
+        queryClient.setQueryData(wordKeys.detail(data.id), data)
+      }
     },
   })
 }

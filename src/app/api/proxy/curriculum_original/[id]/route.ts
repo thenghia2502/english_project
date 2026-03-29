@@ -12,7 +12,9 @@
 
 // }
 import { cookies } from "next/headers";
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+import type { NextRequest } from "next/server";
+
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     try {
         const cookieStore = await cookies();

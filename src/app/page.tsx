@@ -1,5 +1,4 @@
 import { Sign } from "crypto";
-import CurriculumOriginalManagementPage from "./curriculum/page";
 import Test from "./test";
 import SignUpPage from "./signUpPage";
 import TestImportFile from "./testImportFile";
@@ -20,7 +19,6 @@ export default function Home() {
     // }}
     // />
     // <SpeechToText />
-    // <CurriculumOriginalManagementPage />
     // <Test/>
     <div className="min-h-screen flex items-center justify-center">
       <SignUpPage />

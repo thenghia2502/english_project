@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { devtools, persist } from 'zustand/middleware'
-import { Course, Lesson, CourseWord } from '@/types'
+import { Course, Lesson, CourseWord } from '@/lib/types'
 
 interface CourseState {
   // Data

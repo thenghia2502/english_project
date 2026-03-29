@@ -50,52 +50,52 @@ const fetchCurriculumOriginalList = async (page?: number, limit?: number, search
   return data
 }
 
-const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[]): Promise<CurriculumPagination> => {
-  const qs: string[] = []
-  if (typeof page === 'number') qs.push(`page=${page}`)
-  if (typeof limit === 'number') qs.push(`limit=${limit}`)
-  if (searchQuery) qs.push(`search_text=${encodeURIComponent(searchQuery)}`)
-  // include curriculum_original_id multiple times when provided
-  if (Array.isArray(curriculumOriginalIds) && curriculumOriginalIds.length > 0) {
-    curriculumOriginalIds.forEach(id => qs.push(`curriculum_original_id=${encodeURIComponent(id)}`))
-  }
-  const url = `/api/proxy/curriculum_custom${qs.length ? '?' + qs.join('&') : ''}`
-  const response = await apiFetch(url)
-  if (!response.ok) {
-    throw new Error('Failed to fetch curriculums')
-  }
-  const data = await response.json()
+// const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[]): Promise<CurriculumPagination> => {
+//   const qs: string[] = []
+//   if (typeof page === 'number') qs.push(`page=${page}`)
+//   if (typeof limit === 'number') qs.push(`limit=${limit}`)
+//   if (searchQuery) qs.push(`search_text=${encodeURIComponent(searchQuery)}`)
+//   // include curriculum_original_id multiple times when provided
+//   if (Array.isArray(curriculumOriginalIds) && curriculumOriginalIds.length > 0) {
+//     curriculumOriginalIds.forEach(id => qs.push(`curriculum_original_id=${encodeURIComponent(id)}`))
+//   }
+//   const url = `/api/proxy/curriculum_custom${qs.length ? '?' + qs.join('&') : ''}`
+//   const response = await apiFetch(url)
+//   if (!response.ok) {
+//     throw new Error('Failed to fetch curriculums')
+//   }
+//   const data = await response.json()
 
-  // If the proxy already returned a pagination object
-  if (data && Array.isArray(data.items) && typeof data.page === 'number') return data as CurriculumPagination
+//   // If the proxy already returned a pagination object
+//   if (data && Array.isArray(data.items) && typeof data.page === 'number') return data as CurriculumPagination
 
-  // If wrapped under data.data
-  if (data && data.data && Array.isArray(data.data.items)) return data.data as CurriculumPagination
+//   // If wrapped under data.data
+//   if (data && data.data && Array.isArray(data.data.items)) return data.data as CurriculumPagination
 
-  // If backend returned a plain array, wrap it
-  if (Array.isArray(data)) {
-    return {
-      data: data as Curriculum[],
-      total: data.length,
-      page: 1,
-      limit: data.length,
-      totalPages: 1,
-      meta: data.meta
-    }
-  }
+//   // If backend returned a plain array, wrap it
+//   if (Array.isArray(data)) {
+//     return {
+//       data: data as Curriculum[],
+//       total: data.length,
+//       page: 1,
+//       limit: data.length,
+//       totalPages: 1,
+//       meta: data.meta
+//     }
+//   }
 
-  // If payload contains items but missing metadata, fill defaults
-  if (data && Array.isArray(data.items)) {
-    const items = data.items as Curriculum[]
-    const total = data.total ?? items.length
-    const limit = data.limit ?? items.length
-    const page = data.page ?? 1
-    const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit))
-    return { data, total, page, limit, totalPages, meta: data.meta }
-  }
+//   // If payload contains items but missing metadata, fill defaults
+//   if (data && Array.isArray(data.items)) {
+//     const items = data.items as Curriculum[]
+//     const total = data.total ?? items.length
+//     const limit = data.limit ?? items.length
+//     const page = data.page ?? 1
+//     const totalPages = data.totalPages ?? Math.max(1, Math.ceil(total / limit))
+//     return { data, total, page, limit, totalPages, meta: data.meta }
+//   }
 
-  return { data: [], total: 0, page: 1, limit: 0, totalPages: 0, meta: undefined }
-}
+//   return { data: [], total: 0, page: 1, limit: 0, totalPages: 0, meta: undefined }
+// }
 
 const fetchCurriculumCustomById = async (id: string): Promise<Curriculum> => {
   const response = await fetch(`/api/proxy/curriculum_custom/${id}`)
@@ -212,31 +212,31 @@ export const useCurriculumOriginal = (page?: number, limit?: number, searchQuery
 }
 
 // Hook: get list of curriculum_custom
-export const useCurriculumCustomList = (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[], enabled: boolean = true) => {
-  const setCustom = useCurriculumCustomStore(s => s.setPagination)
+// export const useCurriculumCustomList = (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[], enabled: boolean = true) => {
+//   const setCustom = useCurriculumCustomStore(s => s.setPagination)
 
-  const query = useQuery<CurriculumPagination, Error>({
-    // include searchQuery and curriculumOriginalIds so the query refetches when filters change
-    queryKey: [...curriculumKeys.customLists(), { page, limit, searchQuery, curriculumOriginalIds }],
-    queryFn: ({ queryKey }) => {
-      // queryKey shape: [..., { page, limit, searchQuery, curriculumOriginalIds }]
-      const last = queryKey[queryKey.length - 1] as { page?: number; limit?: number; searchQuery?: string; curriculumOriginalIds?: string[] }
-      return fetchCurriculumCustomList(last?.page, last?.limit, last?.searchQuery, last?.curriculumOriginalIds)
-    },
-    enabled,
-    staleTime: 2 * 60 * 1000, // Increase stale time to 2 minutes to reduce unnecessary refetches
-    retry: 1, // Only retry once on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
-  })
+//   const query = useQuery<CurriculumPagination, Error>({
+//     // include searchQuery and curriculumOriginalIds so the query refetches when filters change
+//     queryKey: [...curriculumKeys.customLists(), { page, limit, searchQuery, curriculumOriginalIds }],
+//     queryFn: ({ queryKey }) => {
+//       // queryKey shape: [..., { page, limit, searchQuery, curriculumOriginalIds }]
+//       const last = queryKey[queryKey.length - 1] as { page?: number; limit?: number; searchQuery?: string; curriculumOriginalIds?: string[] }
+//       return fetchCurriculumCustomList(last?.page, last?.limit, last?.searchQuery, last?.curriculumOriginalIds)
+//     },
+//     enabled,
+//     staleTime: 2 * 60 * 1000, // Increase stale time to 2 minutes to reduce unnecessary refetches
+//     retry: 1, // Only retry once on failure
+//     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+//   })
 
-  useEffect(() => {
-    if (query.data) {
-      setCustom(query.data)
-    }
-  }, [query.data, setCustom])
+//   useEffect(() => {
+//     if (query.data) {
+//       setCustom(query.data)
+//     }
+//   }, [query.data, setCustom])
 
-  return query
-}
+//   return query
+// }
 
 export const useCurriculumOriginalById = (id: string) => {
   return useQuery<Curriculum, Error>({

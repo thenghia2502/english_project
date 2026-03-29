@@ -74,7 +74,7 @@ export const useCurriculumOriginalStore = create<CurriculumOriginalState>()(
 
         setPagination: (paginationData: CurriculumPagination) => 
           set({ 
-            curriculums: paginationData.items,
+            curriculums: paginationData.data,
             pagination: {
               page: paginationData.page,
               limit: paginationData.limit,

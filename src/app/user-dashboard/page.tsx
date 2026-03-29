@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import LessonsTab from "./lessons-tab"
 import CurriculumTab from "./curriculum-tab"
 import UserInfoTab from "./user-info-tab"
@@ -18,6 +18,14 @@ function isDashboardTab(value: string | null): value is DashboardTab {
 }
 
 export default function Dashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-background via-background to-muted" />}>
+      <DashboardContent />
+    </Suspense>
+  )
+}
+
+function DashboardContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

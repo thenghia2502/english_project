@@ -40,7 +40,16 @@ export async function POST(request: Request) {
             path: "/",
         });
         return response;
-    } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), { status: error.status });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Internal server error";
+        const status =
+            typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            typeof (error as { status?: unknown }).status === "number"
+                ? (error as { status: number }).status
+                : 500;
+
+        return NextResponse.json({ error: message }, { status });
     }
 }
