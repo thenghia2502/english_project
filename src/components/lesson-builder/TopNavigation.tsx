@@ -29,7 +29,7 @@ export default function TopNavigation({ isEditMode, onOpenModal }: TopNavigation
                         )}
                         <Button 
                             className="bg-blue-600 text-white" 
-                            onClick={() => router.push("/lesson")} 
+                            onClick={() => router.push("/user-dashboard")} 
                             variant="outline"
                         >
                             Quản lý bài học

@@ -99,7 +99,7 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                     <h1 className="text-xl font-bold text-black">Book list</h1>
                     {/* <Button 
-                        onClick={() => router.push("/lesson")} 
+                      onClick={() => router.push("/user-dashboard")} 
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                         Quản lý bài học

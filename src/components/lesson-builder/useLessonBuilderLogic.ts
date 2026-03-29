@@ -227,7 +227,7 @@ export function useLessonBuilderLogic({
 
         try {
             createLessonMutation(newLesson, {
-                onSuccess: () => router.push('/lesson'),
+                onSuccess: () => router.push('/user-dashboard'),
                 onError: (error) => {
                     console.error('Failed to create lesson:', error)
                     alert('Failed to create lesson. Please try again.')
@@ -278,7 +278,7 @@ export function useLessonBuilderLogic({
             console.log('📤 Updating lesson with payload:', payload)
             await updateLessonWordsMutation(payload, {
                 onSuccess: () => {
-                    router.push('/lesson')
+                    router.push('/user-dashboard')
                 },
                 onError: (error) => {
                     console.error('Failed to update lesson:', error)
