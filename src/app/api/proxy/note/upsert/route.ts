@@ -1,11 +1,14 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { cookies } from "next/headers";
+
+const backendBaseUrl = getBackendBaseUrl()
 
 export async function POST(request: Request) {
     try {
         const reqData = await request.json();
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value
-        const res = await fetch(`http://localhost:4000/unit-notes/upsert`, {
+        const res = await fetch(`${backendBaseUrl}/unit-notes/upsert`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -1,3 +1,6 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
+
+const backendBaseUrl = getBackendBaseUrl()
 // import z from 'zod';
 // const curriculumListSchema = z.object({
 //     items: z.array(z.object({
@@ -29,7 +32,7 @@
 //     try {
 //         const url = new URL(request.url)
 //         const search = url.search || ''
-//         const outgoing = `http://localhost:4000/api/curriculum_original${search}`
+//         const outgoing = `${backendBaseUrl}/api/curriculum_original${search}`
 //         const response = await fetch(outgoing, { cache: 'no-store' });
 //         const raw = await response.json();
 
@@ -85,7 +88,7 @@ export async function GET() {
         // const search = url.search || ''
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value;
-        const outgoing = `http://localhost:4000/curriculum`
+        const outgoing = `${backendBaseUrl}/curriculum`
         const response = await fetch(outgoing, {
             cache: 'no-store',
             headers: {

@@ -1,3 +1,6 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
+
+const backendBaseUrl = getBackendBaseUrl()
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -19,7 +22,7 @@ export async function POST(request: Request) {
     backendFormData.append('file', new Blob([buffer]), file.name);
 
     // Send to backend
-    const response = await fetch('http://localhost:4000/files/import/test-read-file', {
+    const response = await fetch(`${backendBaseUrl}/files/import/test-read-file`, {
       method: 'POST',
       body: backendFormData,
     });

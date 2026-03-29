@@ -1,4 +1,7 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import z from 'zod';
+
+const backendBaseUrl = getBackendBaseUrl()
 const curriculumListSchema = z.object({
     items: z.array(z.object({
         id: z.string(),
@@ -30,7 +33,7 @@ export async function GET(request: Request) {
     try {
         const url = new URL(request.url)
         const search = url.search || ''
-        const outgoing = `http://localhost:4000/api/curriculum_custom${search}`
+        const outgoing = `${backendBaseUrl}/api/curriculum_custom${search}`
         const response = await fetch(outgoing, { cache: 'no-store' });
         const raw = await response.json().catch(() => null);
 

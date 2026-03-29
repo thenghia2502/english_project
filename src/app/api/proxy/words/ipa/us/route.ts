@@ -1,3 +1,6 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
+
+const backendBaseUrl = getBackendBaseUrl()
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);
@@ -5,7 +8,7 @@ export async function GET(request: Request) {
         if (!word) {
             return new Response(JSON.stringify({ error: 'word parameter is required' }), { status: 400 });
         }
-        const res = await fetch(`http://localhost:4000/words/us-ipa?word=${encodeURIComponent(word)}`, {
+        const res = await fetch(`${backendBaseUrl}/words/us-ipa?word=${encodeURIComponent(word)}`, {
             method: 'GET',
         });
         const data = await res.json();

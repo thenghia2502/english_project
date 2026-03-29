@@ -1,5 +1,8 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { NextResponse } from "next/server";
 import { cookies } from 'next/headers';
+
+const backendBaseUrl = getBackendBaseUrl()
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -16,7 +19,7 @@ export async function POST(request: Request) {
         }
 
         // Gọi backend để refresh token
-        const response = await fetch('http://localhost:4000/auth/refresh', {
+        const response = await fetch(`${backendBaseUrl}/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',

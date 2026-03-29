@@ -1,7 +1,10 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
+
+const backendBaseUrl = getBackendBaseUrl()
 export async function DELETE(request: Request) {
     const { id } = await request.json();
     try {
-        const response = await fetch(`http://localhost:4000/api/curriculum_custom/delete`, {
+        const response = await fetch(`${backendBaseUrl}/api/curriculum_custom/delete`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
