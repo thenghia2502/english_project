@@ -200,14 +200,8 @@ export default function VocabTrainer() {
                         const wordText = String(cw.word)
 
                         // Try to get audio URL, fallback to local or empty string
-                        let audioUrl = ''
-                        // try {
-                        audioUrl = await getAudioUrl(wordText, dialect)
-                        // } catch {
-                        //     // Fallback to local audio if API fails
-                        //     audioUrl = getAudioUrlLocal(wordText, dialect) || ''
-                        // }
-
+                        let audioUrl = await getAudioUrl(wordText, dialect)
+  
                         return {
                             id: id,
                             word: wordText,
