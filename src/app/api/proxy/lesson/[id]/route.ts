@@ -1,5 +1,8 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
+
+const backendBaseUrl = getBackendBaseUrl()
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> | { id: string } }) {
     const id = (await params).id;
@@ -7,7 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value
         // const userId = cookieStore.get('user_id')?.value;
-        const response = await fetch(`http://localhost:4000/lesson/${id}`, {
+        const response = await fetch(`${backendBaseUrl}/lesson/${id}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',

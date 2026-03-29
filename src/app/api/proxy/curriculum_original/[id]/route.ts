@@ -1,7 +1,10 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
+
+const backendBaseUrl = getBackendBaseUrl()
 // export async function GET(request: Request, { params }: { params: { id: string } }) {
 //     const { id } = await params;
 //     try {
-//         const response = await fetch(`http://localhost:4000/api/curriculum_original/${id}`);
+//         const response = await fetch(`${backendBaseUrl}/api/curriculum_original/${id}`);
 //         const data = await response.json();
 //         return new Response(JSON.stringify(data), { status: 200 });
 //     } catch {
@@ -19,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     try {
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value;
-        const response = await fetch(`http://localhost:4000/curriculum/${id}`, {
+        const response = await fetch(`${backendBaseUrl}/curriculum/${id}`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }

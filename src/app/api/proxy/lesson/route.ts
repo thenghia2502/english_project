@@ -1,5 +1,8 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import page from "@/app/lesson/update/[id]/page";
 import { cookies } from "next/headers";
+
+const backendBaseUrl = getBackendBaseUrl()
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +14,7 @@ export async function GET(request: Request) {
     const sortOrder = searchParams.get("sortOrder") || "desc"
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("access_token")?.value;
-    const res = await fetch(`http://localhost:4000/lesson?search=${search}&limit=${limit}&page=${page}&sortBy=${sortBy}&sortOrder=${sortOrder}`, {
+    const res = await fetch(`${backendBaseUrl}/lesson?search=${search}&limit=${limit}&page=${page}&sortBy=${sortBy}&sortOrder=${sortOrder}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

@@ -1,4 +1,7 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { cookies } from "next/headers"
+
+const backendBaseUrl = getBackendBaseUrl()
 
 export async function GET(request: Request) {
   try {
@@ -6,7 +9,7 @@ export async function GET(request: Request) {
     const idNote = url.searchParams.get("idNote");
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("access_token")?.value;
-    const res = await fetch(`http://localhost:4000/unit-notes/${idNote}`, {
+    const res = await fetch(`${backendBaseUrl}/unit-notes/${idNote}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

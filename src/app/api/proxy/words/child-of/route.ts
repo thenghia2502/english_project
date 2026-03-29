@@ -1,5 +1,8 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+
+const backendBaseUrl = getBackendBaseUrl()
 
 export async function GET(request: Request) {
     try {
@@ -13,7 +16,7 @@ export async function GET(request: Request) {
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value;
 
-        const response = await fetch(`http://localhost:4000/words/child-of/${parentId}`, {
+        const response = await fetch(`${backendBaseUrl}/words/child-of/${parentId}`, {
             headers: {
                 'Authorization': accessToken ? `Bearer ${accessToken}` : '',
             },
@@ -25,7 +28,7 @@ export async function GET(request: Request) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
-            const refreshResponse = await fetch('http://localhost:4000/auth/refresh', {
+            const refreshResponse = await fetch(`${backendBaseUrl}/auth/refresh`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ refresh_token: refreshToken }),
@@ -37,7 +40,7 @@ export async function GET(request: Request) {
 
             const { access_token: newAccessToken, refresh_token: newRefreshToken } = await refreshResponse.json();
 
-            const retryResponse = await fetch(`http://localhost:4000/words/child-of/${parentId}`, {
+            const retryResponse = await fetch(`${backendBaseUrl}/words/child-of/${parentId}`, {
                 headers: {
                     'Authorization': `Bearer ${newAccessToken}`,
                 },

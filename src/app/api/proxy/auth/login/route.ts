@@ -1,10 +1,13 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { NextResponse } from "next/server";
+
+const backendBaseUrl = getBackendBaseUrl()
  const isProduction = process.env.NODE_ENV === "production";
 export async function POST(request: Request) {
     try {
         const body = await request.json(); // ⬅ Parse JSON
 
-        const res = await fetch('http://localhost:4000/auth/login', {
+        const res = await fetch(`${backendBaseUrl}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)

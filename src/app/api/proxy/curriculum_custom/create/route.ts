@@ -1,7 +1,10 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
+
+const backendBaseUrl = getBackendBaseUrl()
 export async function POST(request: Request) {
     const body = await request.json();
     try {
-        const response = await fetch('http://localhost:4000/api/curriculum_custom/create', {
+        const response = await fetch(`${backendBaseUrl}/api/curriculum_custom/create`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

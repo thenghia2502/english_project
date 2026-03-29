@@ -1,5 +1,8 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
+
+const backendBaseUrl = getBackendBaseUrl()
 
 const isProduction = process.env.NODE_ENV === "production"
 
@@ -10,7 +13,7 @@ export async function POST() {
 
     if (refreshToken) {
       try {
-        await fetch("http://localhost:4000/auth/logout", {
+        await fetch(`${backendBaseUrl}/auth/logout`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refreshToken }),

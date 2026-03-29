@@ -1,5 +1,8 @@
+import { getBackendBaseUrl } from "@/lib/backend-url"
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+const backendBaseUrl = getBackendBaseUrl()
 const isProduction = process.env.NODE_ENV === "production";
 
 export async function GET(request: Request) {
@@ -19,7 +22,7 @@ export async function GET(request: Request) {
 
         // Build query string with multiple unitIds parameters: unitIds=id1&unitIds=id2&unitIds=id3
         const queryString = unitIds.map(id => `unitIds=${encodeURIComponent(id)}`).join('&');
-        const url = `http://localhost:4000/words/by-units?${queryString}`
+        const url = `${backendBaseUrl}/words/by-units?${queryString}`
         const doFetch = async (token?: string) => fetch(url, {
             method: 'GET',
             headers: {
@@ -33,7 +36,7 @@ export async function GET(request: Request) {
         // If unauthorized and we have a refresh token, try to refresh and retry once
         if (response.status === 401 && refreshToken) {
             try {
-                const refreshRes = await fetch('http://localhost:4000/auth/refresh', {
+                const refreshRes = await fetch(`${backendBaseUrl}/auth/refresh`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ refresh_token: refreshToken })
