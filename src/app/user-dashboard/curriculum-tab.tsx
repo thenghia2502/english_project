@@ -168,7 +168,7 @@ export default function CurriculumTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {curriculums.map((curriculum) => (
           
-          <div key={curriculum.id} className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+          <div key={curriculum.id} className="group bg-white dark:bg-white border border-slate-200 dark:border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
             <div className="relative h-48 overflow-hidden">
               <img alt="React coding" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Computer screen showing modern react programming code" src="https://macpwgocrmlkwjjhhgzc.supabase.co/storage/v1/object/public/store2/image/Screenshot%202025-11-28%20101724.png" />
               {/* <div className="absolute top-4 right-4 flex gap-2">
@@ -181,30 +181,30 @@ export default function CurriculumTab() {
                   {/* <p className="text-xs font-bold text-primary tracking-wider uppercase mb-1">CS-401</p> */}
                   <h3 className="text-lg font-bold leading-tight">{curriculum.name}</h3>
                 </div>
-                <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-600">
                   <span className="material-symbols-outlined"><EllipsisVertical /></span>
                 </button>
               </div>
               <div className="flex items-center gap-3 mb-4">
                 <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded">Intermediate</span>
-                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm">
+                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-500 text-sm">
                   <span className="material-symbols-outlined text-base"><BookOpenText /></span>
                   <span>{(Array.isArray(curriculum.units) ? curriculum.units.length : Array.isArray(curriculum.list_unit) ? curriculum.list_unit.length : 0)} Lessons</span>
                 </div>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4">
+              <p className="text-sm text-slate-600 dark:text-slate-600 line-clamp-2 mb-4">
                 {curriculum.description}
               </p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mb-6">Created {curriculum.created_at ?? "N/A"}</p>
-              <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs text-slate-400 dark:text-slate-400 mb-6">Created {curriculum.created_at ?? "N/A"}</p>
+              <div className="flex items-center gap-2 pt-4 border-t border-slate-100 dark:border-slate-100">
                 <button className="flex-1 bg-primary hover:bg-primary/90 text-white text-sm font-bold py-2 rounded-lg transition-colors" onClick={() => routerPush(`/lesson/create?id=${curriculum.id}`)}>Create Lesson</button>
-                <button className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-bold py-2 rounded-lg transition-colors" onClick={() => routerPush(`/book/${curriculum.id}`)}>View Details</button>
+                <button className="flex-1 bg-slate-100 dark:bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-200 text-slate-700 dark:text-slate-700 text-sm font-bold py-2 rounded-lg transition-colors" onClick={() => routerPush(`/book/${curriculum.id}`)}>View Details</button>
               </div>
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-12 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-6">
+      <div className="mt-12 flex items-center justify-between border-t border-slate-200 dark:border-slate-200 pt-6">
         <div className="">
           {totalPages >= 1 && (
             <AppPagination
