@@ -5,6 +5,50 @@ import { useCurriculumOriginalStore } from '@/stores/curriculum-original-store'
 import { useCurriculumCustomStore } from '@/stores/curriculum-custom-store'
 import { apiFetch } from './apiFetch'
 
+const normalizeCurriculumPagination = (raw: unknown): CurriculumPagination => {
+  const payload = (raw && typeof raw === 'object' && 'data' in raw)
+    ? (raw as { data?: unknown }).data
+    : raw
+
+  const rows = Array.isArray(payload)
+    ? payload
+    : (payload && typeof payload === 'object' && 'data' in payload && Array.isArray((payload as { data?: unknown }).data)
+      ? (payload as { data: unknown[] }).data
+      : [])
+
+  const safeRows = rows
+    .filter((item): item is Curriculum => !!item && typeof item === 'object')
+    .map((item) => ({
+      ...item,
+      levels: Array.isArray(item.levels) ? item.levels : [],
+      units: Array.isArray(item.units) ? item.units : [],
+      list_level: Array.isArray(item.list_level) ? item.list_level : [],
+      list_unit: Array.isArray(item.list_unit) ? item.list_unit : [],
+    }))
+
+  const source = (raw && typeof raw === 'object') ? (raw as Partial<CurriculumPagination>) : {}
+  const total = typeof source.total === 'number' ? source.total : safeRows.length
+  const limit = typeof source.limit === 'number' && source.limit > 0 ? source.limit : Math.max(safeRows.length, 1)
+  const page = typeof source.page === 'number' && source.page > 0 ? source.page : 1
+  const totalPages = typeof source.totalPages === 'number' && source.totalPages > 0
+    ? source.totalPages
+    : Math.max(1, Math.ceil(total / limit))
+
+  return {
+    data: safeRows,
+    total,
+    page,
+    limit,
+    totalPages,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages,
+    },
+  }
+}
+
 const fetchCurriculumOriginalList = async (page?: number, limit?: number, searchQuery?: string): Promise<CurriculumPagination> => {
   const qs: string[] = []
   if (typeof page === 'number') qs.push(`page=${page}`)
@@ -16,7 +60,7 @@ const fetchCurriculumOriginalList = async (page?: number, limit?: number, search
   if (!response.ok) {
     throw new Error('Failed to fetch curriculums')
   }
-  const data = await response.json()
+  const data = await response.json().catch(() => null)
 
   // If the proxy already returned a pagination object
   // if (data && Array.isArray(data.items) && typeof data.page === 'number') return data as CurriculumPagination
@@ -47,7 +91,7 @@ const fetchCurriculumOriginalList = async (page?: number, limit?: number, search
   // }
 
   // return { data: [], total: 0, page: 1, limit: 0, totalPages: 0, meta: undefined }
-  return data
+  return normalizeCurriculumPagination(data)
 }
 
 // const fetchCurriculumCustomList = async (page?: number, limit?: number, searchQuery?: string, curriculumOriginalIds?: string[]): Promise<CurriculumPagination> => {

@@ -144,6 +144,16 @@ export default function CurriculumTab() {
   } = useCurriculumOriginalManagement()
 
   const router = useRouter()
+  const safeCurriculums = (Array.isArray(curriculums) ? curriculums : []).filter(
+    (item): item is NonNullable<(typeof curriculums)[number]> => !!item && typeof item === "object"
+  )
+
+  const getLessonCount = (curriculum: (typeof safeCurriculums)[number]) => {
+    const units = Array.isArray(curriculum.units) ? curriculum.units : []
+    const listUnits = Array.isArray(curriculum.list_unit) ? curriculum.list_unit : []
+    return units.length > 0 ? units.length : listUnits.length
+  }
+
   const routerPush = (path: string) => {
     router.push(path)
   }
@@ -166,7 +176,7 @@ export default function CurriculumTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {curriculums.map((curriculum) => (
+        {safeCurriculums.map((curriculum) => (
           
           <div key={curriculum.id} className="group bg-white dark:bg-white border border-slate-200 dark:border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
             <div className="relative h-48 overflow-hidden">
@@ -189,7 +199,7 @@ export default function CurriculumTab() {
                 <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded">Intermediate</span>
                 <div className="flex items-center gap-1 text-slate-500 dark:text-slate-500 text-sm">
                   <span className="material-symbols-outlined text-base"><BookOpenText /></span>
-                  <span>{(Array.isArray(curriculum.units) ? curriculum.units.length : Array.isArray(curriculum.list_unit) ? curriculum.list_unit.length : 0)} Lessons</span>
+                  <span>{getLessonCount(curriculum)} Lessons</span>
                 </div>
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-600 line-clamp-2 mb-4">
