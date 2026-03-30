@@ -71,6 +71,8 @@ export default function LessonsTab() {
         totalPages
     } = useLessonTab()
 
+    const lessons = Array.isArray(data?.data) ? data.data : []
+
     return (
         <div>
             <div className="mb-6">
@@ -130,14 +132,18 @@ export default function LessonsTab() {
                     <div className="col-span-full text-center py-8">
                         <p className="text-muted-foreground">Loading lessons...</p>
                     </div>
-                ) : data?.data.map((lesson: DashboardLesson) => (
+                ) : lessons.map((lesson: DashboardLesson) => {
+                    const levels = Array.isArray(lesson.levels) ? lesson.levels : []
+                    const words = Array.isArray(lesson.words) ? lesson.words : []
+
+                    return (
                     <Card key={lesson.id} className="hover:shadow-lg transition-shadow">
                         <CardHeader>
                             <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1">
                                     <CardTitle className="text-xl mb-1">{lesson.name}</CardTitle>
                                     <div className="flex gap-2">
-                                        {lesson.levels.map((level: LessonLevel) => (
+                                        {levels.map((level: LessonLevel) => (
                                             <Badge key={level.id} className={`${getLevelColor(level.name)} border-0`}>{level.name}</Badge>
                                         ))}
                                     </div>
@@ -152,7 +158,6 @@ export default function LessonsTab() {
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <div>
                                     {(() => {
-                                        const words = lesson.words
                                         return words.slice(0, 2).map((cw: LessonWord) => (
                                             <Badge key={cw.id} variant="outline" className="text-xs text-gray-900">
                                                 {cw.word}
@@ -160,7 +165,6 @@ export default function LessonsTab() {
                                         ))
                                     })()}
                                     {(() => {
-                                        const words = lesson.words ?? []
                                         return words.length > 2 ? (
                                             <Badge variant="outline" className="text-xs text-gray-900">
                                                 +{words.length - 2} từ khác
@@ -198,7 +202,8 @@ export default function LessonsTab() {
                             </Button>
                         </CardContent>
                     </Card>
-                ))}
+                    )
+                })}
             </div>
             <div className="mt-6">
                 {totalPages > 1 && (

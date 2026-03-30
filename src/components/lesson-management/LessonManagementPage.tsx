@@ -47,7 +47,7 @@ export default function LessonManagementPage() {
     // Computed values
     const isLoading = lessonsLoading
     const error = lessonsError?.message
-    const hasNoLessons = !isLoading && !error && lessons?.data.length === 0
+    const hasNoLessons = !isLoading && !error && (Array.isArray(lessons?.data) ? lessons.data.length === 0 : true)
 
     const handleSortChange = (value: string) => {
         if (value === "date-desc" || value === "date-asc" || value === "progress-desc" || value === "progress-asc") {

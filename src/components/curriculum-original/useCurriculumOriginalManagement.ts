@@ -22,15 +22,17 @@ export function useCurriculumOriginalManagement() {
         setCurrentPage(1)
     }, [searchTerm])
     
+    const safeCurriculumData = Array.isArray(data?.data) ? data.data : []
+
     // Initialize selected IDs with all curriculums when data loads
     useEffect(() => {
-        if (data?.data && data.data.length > 0 && selectedIds.length === 0) {
-            setSelectedIds(data.data.map(c => c.id))
+        if (safeCurriculumData.length > 0 && selectedIds.length === 0) {
+            setSelectedIds(safeCurriculumData.map(c => c.id))
         }
-    }, [data?.data, selectedIds.length])
+    }, [safeCurriculumData, selectedIds.length])
     
     // Since we're using server-side search, don't filter again client-side
-    const filteredCurriculums = data?.data || []
+    const filteredCurriculums = safeCurriculumData
     
     // Get selected curriculums
     const selectedCurriculums = useMemo(() => {
