@@ -149,10 +149,47 @@ const fetchCurriculumCustomById = async (id: string): Promise<Curriculum> => {
   return response.json()
 }
 
-const fetchCurriculumOriginalById = async (id: string): Promise<Curriculum> => {
+const fetchCurriculumOriginalById = async (id: string): Promise<{id: string,
+   name: string, 
+   description: string | null, 
+   created_at: string, 
+   updated_at: string, 
+   work_book_id: string, 
+   units: {id: string, title: string, link: string}[]
+  }> => {
   const response = await fetch(`/api/proxy/curriculum_original/${id}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch curriculum ${id}`)
+  }
+  return response.json()
+}
+
+const fetchStudentBookById = async (id: string): Promise<{id: string,
+   name: string, 
+   description: string | null, 
+   created_at: string, 
+   updated_at: string, 
+   work_book_id: string, 
+   units: {id: string, title: string, link: string}[]
+  }> => {
+  const response = await fetch(`/api/proxy/curriculum_original/studentbook/${id}`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch student book ${id}`)
+  }
+  return response.json()
+}
+
+const fetchWorkBookById = async (id: string): Promise<{id: string,
+   name: string, 
+   description: string | null, 
+   created_at: string, 
+   updated_at: string, 
+   student_book_id: string, 
+   units: {id: string, title: string, link: string}[]
+  }> => {
+  const response = await fetch(`/api/proxy/curriculum_original/workbook/${id}`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch workbook ${id}`)
   }
   return response.json()
 }
@@ -283,9 +320,48 @@ export const useCurriculumOriginal = (page?: number, limit?: number, searchQuery
 // }
 
 export const useCurriculumOriginalById = (id: string) => {
-  return useQuery<Curriculum, Error>({
+  return useQuery<{id: string,
+   name: string, 
+   description: string | null, 
+   created_at: string, 
+   updated_at: string, 
+   work_book_id: string, 
+   units: {id: string, title: string, link: string}[]
+  },  Error>({
     queryKey: curriculumKeys.detail(id),
     queryFn: () => fetchCurriculumOriginalById(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+export const useStudentBookById = (id: string) => {
+  return useQuery<{id: string,
+   name: string, 
+   description: string | null, 
+   created_at: string, 
+   updated_at: string, 
+   work_book_id: string, 
+   units: {id: string, title: string, link: string}[]
+  },  Error>({
+    queryKey: curriculumKeys.detail(id),
+    queryFn: () => fetchStudentBookById(id),
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+}
+
+export const useWorkBookById = (id: string) => {
+  return useQuery<{id: string,
+   name: string, 
+   description: string | null, 
+   created_at: string, 
+   updated_at: string, 
+   student_book_id: string, 
+   units: {id: string, title: string, link: string}[]
+  },  Error>({
+    queryKey: curriculumKeys.detail(id),
+    queryFn: () => fetchWorkBookById(id),
     enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutes
   })

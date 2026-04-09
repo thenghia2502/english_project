@@ -44,26 +44,8 @@ interface BookReaderProps {
     created_at: string
     updated_at: string
     description: string
-    "units":
-    {
-      "unit_id": string,
-      "unit_name": string,
-      "unit_order": number,
-      "link": string,
-      "level_id": string,
-      "level_name": string,
-      "level_description": string,
-      "level_code": string
-    }[]
-    ,
-    "levels":
-    {
-      "level_id": string,
-      "level_code": string,
-      "level_name": string,
-      "level_description": string
-    }[]
-
+    work_book_id: string
+    units: { id: string, title: string, link: string }[]
   }
 }
 
@@ -71,17 +53,8 @@ export function BookReader({ book }: BookReaderProps) {
   const router = useRouter()
   const upsertNoteMutation = useUpsertNote()
   const workbookQuery = useGetWorkbook(book?.id)
-  const [selectedUnit, setSelectedUnit] = useState<{
-      "unit_id": string,
-      "unit_name": string,
-      "unit_order": number,
-      "link": string,
-      "level_id": string,
-      "level_name": string,
-      "level_description": string,
-      "level_code": string
-    } | null>(book?.units?.[0] ?? null)
-  const noteQuery = useNote(selectedUnit?.unit_id)
+  const [selectedUnit, setSelectedUnit] = useState<{ id: string, title: string, link: string } | null>(book?.units?.[0] ?? null)
+  const noteQuery = useNote(selectedUnit?.id)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [savedNotes, setSavedNotes] = useState<BookNote[]>([])
   const [isSaving, setIsSaving] = useState(false)
@@ -125,9 +98,9 @@ export function BookReader({ book }: BookReaderProps) {
     if (!selectedUnit) return
     setNotes((prev) => ({
       ...prev,
-      [selectedUnit.unit_id]: loadedText,
+      [selectedUnit.id]: loadedText,
     }))
-  }, [noteQuery.data, noteQuery.error, noteQuery.isError, noteQuery.isLoading, selectedUnit?.unit_id])
+  }, [noteQuery.data, noteQuery.error, noteQuery.isError, noteQuery.isLoading, selectedUnit?.id])
 
   const handleSaveNote = async () => {
     if (!selectedUnit) return
@@ -138,20 +111,20 @@ export function BookReader({ book }: BookReaderProps) {
 
     try {
       const result = await upsertNoteMutation.mutateAsync({
-        unitId: selectedUnit.unit_id,
+        unitId: selectedUnit.id,
         content: text,
       })
 
       if ((result as { success?: boolean } | null)?.success !== false) {
         const newNote: BookNote = {
           id: Date.now().toString(),
-          unitId: selectedUnit.unit_id,
+          unitId: selectedUnit.id,
           content: text,
           timestamp: new Date(),
           title: title
         }
         setSavedNotes([...savedNotes, newNote])
-        setSaveMessage({ type: 'success', text: `Note saved for ${selectedUnit.unit_name}!` })
+        setSaveMessage({ type: 'success', text: `Note saved for ${selectedUnit.title}!` })
 
         // Clear success message after 3 seconds
         setTimeout(() => setSaveMessage(null), 3000)
@@ -172,7 +145,7 @@ export function BookReader({ book }: BookReaderProps) {
   const handleGetWorkbook = () => {
     const workbook = workbookQuery.data
 
-    const rawRef = workbook?.workbookId || workbook?.workbook_id || workbook?.id_wb || workbook?.workbookUrl || workbook?.url || workbook?.id
+    const rawRef = workbook?.workbookId || workbook?.workbook_id || workbook?.id_wb || workbook?.workbookUrl || workbook?.url || workbook?.id || book.work_book_id
 
     if (!rawRef) {
       console.error('Workbook id/url is not available')
@@ -238,14 +211,14 @@ export function BookReader({ book }: BookReaderProps) {
                 </div>
                 <div className="space-y-2">
                   {book.units.map((unit) => (
-                    <React.Fragment key={unit.unit_id}>
+                    <React.Fragment key={unit.id}>
                       <Button
-                        key={unit.unit_id}
-                        variant={selectedUnit?.unit_id === unit.unit_id ? "default" : "ghost"}
-                        className={`w-full justify-start text-left hover:bg-gray-300 cursor-pointer ${selectedUnit?.unit_id === unit.unit_id ? "bg-primary text-white" : ""}`}
+                        key={unit.id}
+                        variant={selectedUnit?.id === unit.id ? "default" : "ghost"}
+                        className={`w-full justify-start text-left hover:bg-gray-300 cursor-pointer ${selectedUnit?.id === unit.id ? "bg-primary text-white" : ""}`}
                         onClick={() => setSelectedUnit(unit)}
                       >
-                        <span className="line-clamp-2 text-sm">{unit.unit_name}</span>
+                        <span className="line-clamp-2 text-sm">{unit.title}</span>
                       </Button>
                       {/* <Button
                       variant={"default"}
@@ -259,8 +232,8 @@ export function BookReader({ book }: BookReaderProps) {
                   <Button
                     variant={"ghost"}
                     className="w-full justify-start text-left hover:bg-gray-300 cursor-pointer"
-                    onClick={handleGetWorkbook}
-                    disabled={workbookQuery.isLoading}
+                    onClick={()=> router.push(`/book/wb/${book.work_book_id}`)}
+                    // disabled={workbookQuery.isLoading}
                   >
                     {workbookQuery.isLoading ? 'Đang tải sách bài tập...' : 'Xem sách bài tập'}
                   </Button>
@@ -286,7 +259,7 @@ export function BookReader({ book }: BookReaderProps) {
           <div className="h-full p-4">
             <Card className="h-full">
               <CardContent className="h-[calc(100%)] p-0">
-                <PDFViewer pdfUrl={selectedUnit.link} title={selectedUnit.unit_name} />
+                <PDFViewer pdfUrl={selectedUnit.link} title={selectedUnit.title} />
               </CardContent>
             </Card>
           </div>
@@ -333,7 +306,7 @@ export function BookReader({ book }: BookReaderProps) {
                       setText(content)
                       setNotes((prev) => ({
                         ...prev,
-                        [selectedUnit.unit_id]: content,
+                        [selectedUnit.id]: content,
                       }))
                     }}
                     placeholder="Write your notes here..."

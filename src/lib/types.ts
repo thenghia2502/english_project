@@ -155,6 +155,7 @@ export interface LevelShort {
 export interface Curriculum {
     id: string
     name: string
+    work_book_id: string
     description?: string
     list_level?: Level[]
     list_unit?: Unit[]

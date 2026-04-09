@@ -18,7 +18,7 @@ export interface BookLevel {
 export interface BookUnit {
   id: string
   title: string
-  pdfUrl: string // Google Drive PDF link
+  link: string // Google Drive PDF link
 }
 
 export interface BookNote {

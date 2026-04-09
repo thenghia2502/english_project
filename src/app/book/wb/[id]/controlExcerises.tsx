@@ -17,8 +17,7 @@ interface BookReaderProps {
     title: string
     author: string
     units: BookUnit[]
-    id_wb?: string
-    id_sb?: string
+    student_book_id: string
   }
 }
 
@@ -119,7 +118,7 @@ export default function ControlExercises({ book }: BookReaderProps) {
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-left hover:bg-gray-300 cursor-pointer"
-                    onClick={() => router.push(`/book/${book.id_sb}`)}
+                    onClick={() => router.push(`/book/${book.student_book_id}`)}
                   >
                     <span className="line-clamp-2 text-sm">Xem sách bài học</span>
                   </Button>
@@ -137,7 +136,7 @@ export default function ControlExercises({ book }: BookReaderProps) {
           <div className="h-full p-4">
             <Card className="h-full">
               <CardContent className="h-[calc(100%)] p-0">
-                <PDFViewer pdfUrl={selectedUnit.pdfUrl} title={selectedUnit.title} />
+                <PDFViewer pdfUrl={selectedUnit.link} title={selectedUnit.title} />
               </CardContent>
             </Card>
           </div>
