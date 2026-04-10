@@ -22,7 +22,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     try {
         const cookieStore = await cookies();
         const accessToken = cookieStore.get('access_token')?.value;
-        const response = await fetch(`${backendBaseUrl}/curriculum/${id}`, {
+        const response = await fetch(`${backendBaseUrl}/curriculum/books/${id}`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`
             }
