@@ -56,7 +56,7 @@ export async function apiFetch(
           const queued = [...queue]
           queue = []
           queued.forEach((item) => item.reject(e))
-          window.location.href = '/'
+          // window.location.href = '/'
         }
       })()
     }

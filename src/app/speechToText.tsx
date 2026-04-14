@@ -318,13 +318,9 @@ export default function SpeechToText({ onTextChange, bookId, unitId, saveNotesRe
   };
 
   const handleSaveClick = async () => {
-    // Kiểm tra nếu chưa có title, yêu cầu nhập
-    if (!title || !title.trim()) {
-      alert("Bận chưa nhận tên cho ghi chú");
-    } else {
-      // Đã có title, lưu luôn
-      await saveNotes();
-    }
+
+    await saveNotes();
+    
   };
 
   const saveNotes = useCallback(async (): Promise<boolean> => {
@@ -333,7 +329,7 @@ export default function SpeechToText({ onTextChange, bookId, unitId, saveNotesRe
       return false;
     }
 
-    if (!bookId || !unitId || !title) {
+    if (!bookId || !unitId) {
       // setSaveMessage({ type: 'error', text: 'Thiếu thông tin bookId hoặc unitId!' });
       return false;
     }

@@ -1,5 +1,6 @@
 "use client"
 
+import { supabase } from "@/lib/supabase-client"
 import { GraduationCap } from "lucide-react"
 import { useRouter } from "next/navigation"
 
@@ -12,17 +13,23 @@ export default function DashboardHeader() {
 
   const handleLogout = async () => {
     try {
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+
+      // xóa cookie
       await fetch("/api/proxy/auth/logout", {
         method: "POST",
         credentials: "include",
-      })
+      });
+
+      // redirect ngay
+      router.replace("/auth?auth=sign-in");
+
     } catch (error) {
-      console.error("Logout failed:", error)
-    } finally {
-      router.push("/")
-      router.refresh()
+      console.error("Logout failed:", error);
     }
-  }
+  };
 
   return (
     <header className="border-b border-border bg-card sticky top-0 z-40">

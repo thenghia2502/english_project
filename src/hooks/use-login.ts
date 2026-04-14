@@ -24,7 +24,7 @@ export const useLogin = () => {
             }
             
             console.log(result);
-            router.push('/user-dashboard');
+            router.push('/?tabs=lessons');
             
             return result;
         } catch (error) {

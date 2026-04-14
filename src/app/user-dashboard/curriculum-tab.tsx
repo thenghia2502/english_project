@@ -179,8 +179,8 @@ export default function CurriculumTab() {
         {safeCurriculums.map((curriculum) => (
           
           <div key={curriculum.id} className="group bg-white dark:bg-white border border-slate-200 dark:border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-            <div className="relative h-48 overflow-hidden">
-              <img alt="React coding" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Computer screen showing modern react programming code" src="https://macpwgocrmlkwjjhhgzc.supabase.co/storage/v1/object/public/store2/image/Screenshot%202025-11-28%20101724.png" />
+            <div className="relative h-56 overflow-hidden">
+              <img alt="React coding" className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" data-alt="Computer screen showing modern react programming code" src="https://macpwgocrmlkwjjhhgzc.supabase.co/storage/v1/object/public/store2/image/Screenshot%202025-11-28%20101724.png" />
               {/* <div className="absolute top-4 right-4 flex gap-2">
                 <span className="px-2.5 py-1 bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-bold rounded-full backdrop-blur-md border border-green-500/20">Published</span>
               </div> */}

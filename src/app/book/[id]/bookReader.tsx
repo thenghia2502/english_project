@@ -280,13 +280,7 @@ export function BookReader({ book }: BookReaderProps) {
         {isRightPanelOpen && (
           <aside className="flex-1 max-w-1/3 flex-shrink-0 border-l bg-background flex flex-col">
             <div className="flex h-full flex-col">
-              <div className="border-b flex ">
-                <Input
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="border-0 border-r rounded-none flex-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 "
-                  value={title}
-                  placeholder="Nhập tên ghi chú"
-                />
+              <div className="border-b flex justify-end">
                 <Button
                   variant="default"
                   size="icon"

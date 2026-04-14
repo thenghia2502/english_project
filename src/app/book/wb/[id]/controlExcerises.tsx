@@ -79,7 +79,7 @@ export default function ControlExercises({ book }: BookReaderProps) {
           <Button
             variant="outline"
             size="icon"
-            className="absolute top-0 left-0 z-10 bg-white shadow-lg hover:bg-gray-100"
+            className="mt-4 z-10 bg-white shadow-lg hover:bg-primary "
             onClick={() => setIsLeftPanelOpen(true)}
           >
             <ChevronRight className="" />
@@ -91,28 +91,28 @@ export default function ControlExercises({ book }: BookReaderProps) {
           <aside className="w-64 flex-shrink-0 border-r bg-muted/30 ">
             {/* Close Button */}
             <ScrollArea className="h-full">
-              <div className="p-4 pt-0">
-                <div className="flex items-center">
-                  <h2 className=" text-sm font-semibold uppercase tracking-wide text-muted-foreground">Units</h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="flex-1 justify-end cursor-pointer"
+              <div className="pt-0">
+                <div className="flex items-center hover:bg-primary hover:text-white">
+                  <h2 className="pl-4 text-sm font-semibold uppercase tracking-wide">Units</h2>
+                  <button
+                    // variant="ghost"
+                    // size="icon"
+                    className="flex-1 justify-end cursor-pointer h-10 w-10"
                     onClick={() => setIsLeftPanelOpen(false)}
                   >
                     <ChevronLeft className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
-                <div className="space-y-2">
+                <div className="">
                   {book.units.map((unit) => (
                     <Button
                       key={unit.id}
                       variant={selectedUnit.id === unit.id ? "default" : "ghost"}
-                      className={`w-full justify-start text-left hover:bg-gray-300 cursor-pointer ${selectedUnit.id === unit.id ? "bg-gray-200" : ""}`}
+                      className={`w-full justify-start text-left hover:bg-gray-300 cursor-pointer ${selectedUnit.id === unit.id ? "bg-primary text-white" : ""}`}
                       onClick={() => handleUnitChange(unit)}
                       disabled={isSwitchingUnit}
                     >
-                      <span className="line-clamp-2 text-sm">{unit.title}</span>
+                      <span className="line-clamp-2 text-sm ">{unit.title}</span>
                     </Button>
                   ))}
                   <Button
@@ -147,7 +147,7 @@ export default function ControlExercises({ book }: BookReaderProps) {
           <Button
             variant="outline"
             size="icon"
-            className="absolute top-0 right-0 z-10 bg-white shadow-lg hover:bg-gray-100"
+            className="mt-4 z-10 bg-white shadow-lg hover:bg-primary "
             onClick={() => setIsRightPanelOpen(true)}
           >
             <ChevronLeft className="" />
@@ -157,13 +157,7 @@ export default function ControlExercises({ book }: BookReaderProps) {
         {/* Right Panel - Speech to Text */}
         {isRightPanelOpen && (
           <aside className="flex-1 max-w-1/3 flex-shrink-0 border-l bg-background flex flex-col">
-            <div className="pl-4 border-b flex items-center justify-around">
-              <Input
-                onChange={(e) => setTitle(e.target.value)}
-                className="border-0 border-r rounded-none flex-1 text-sm font-semibold uppercase tracking-wide text-muted-foreground outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 "
-                value={title}
-                placeholder="Nhập tên ghi chú"
-              />
+            <div className="pl-4 border-b flex items-center justify-end">
               <Button
                 variant="default"
                 size="icon"

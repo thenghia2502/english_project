@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BookOpen, ClipboardList, User } from "lucide-react"
 import DashboardHeader from "./dashboard-header"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { supabase } from "@/lib/supabase-client"
 
 const DASHBOARD_TABS = ["lessons", "curriculum", "profile"] as const
 type DashboardTab = (typeof DASHBOARD_TABS)[number]
@@ -31,6 +32,39 @@ function DashboardContent() {
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<DashboardTab>("lessons")
   const [isTabReady, setIsTabReady] = useState(false)
+  useEffect(() => {
+    const syncSession = async () => {
+      const sessionResult = supabase ? await supabase.auth.getSession() : null;
+      const session = sessionResult?.data?.session;
+
+      if (session) {
+        await fetch("/api/proxy/auth/google", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          }),
+        });
+        return;
+      }
+
+      // Email/password auth uses httpOnly cookies from backend proxy.
+      // If refresh succeeds, keep user on dashboard instead of forcing auth redirect.
+      const refreshRes = await fetch("/api/proxy/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!refreshRes.ok) {
+        router.replace("/auth?auth=sign-in");
+      }
+    };
+
+    syncSession();
+  }, []);
 
   useEffect(() => {
     const tabFromQuery = searchParams.get("tab")
@@ -61,6 +95,8 @@ function DashboardContent() {
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
   }
 
+  // if (!ready) return <div>Loading...</div>;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       <DashboardHeader />
@@ -68,34 +104,34 @@ function DashboardContent() {
         {!isTabReady ? (
           <div className="h-14 w-full rounded-lg border border-border bg-card" />
         ) : (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8 h-14 bg-card border border-border rounded-lg p-1">
-            <TabsTrigger value="lessons" className="flex items-center gap-2 text-base">
-              <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Lessons</span>
-            </TabsTrigger>
-            <TabsTrigger value="curriculum" className="flex items-center gap-2 text-base">
-              <ClipboardList className="w-4 h-4" />
-              <span className="hidden sm:inline">Curriculum</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center gap-2 text-base">
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">Profile</span>
-            </TabsTrigger>
-          </TabsList>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-8 h-14 bg-card border border-border rounded-lg p-1">
+              <TabsTrigger value="lessons" className="flex items-center gap-2 text-base">
+                <BookOpen className="w-4 h-4" />
+                <span className="hidden sm:inline">Lessons</span>
+              </TabsTrigger>
+              <TabsTrigger value="curriculum" className="flex items-center gap-2 text-base">
+                <ClipboardList className="w-4 h-4" />
+                <span className="hidden sm:inline">Curriculum</span>
+              </TabsTrigger>
+              <TabsTrigger value="profile" className="flex items-center gap-2 text-base">
+                <User className="w-4 h-4" />
+                <span className="hidden sm:inline">Profile</span>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="lessons" className="space-y-6">
-            <LessonsTab />
-          </TabsContent>
+            <TabsContent value="lessons" className="space-y-6">
+              <LessonsTab />
+            </TabsContent>
 
-          <TabsContent value="curriculum" className="space-y-6">
-            <CurriculumTab />
-          </TabsContent>
+            <TabsContent value="curriculum" className="space-y-6">
+              <CurriculumTab />
+            </TabsContent>
 
-          <TabsContent value="profile" className="space-y-6">
-            <UserInfoTab />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="profile" className="space-y-6">
+              <UserInfoTab />
+            </TabsContent>
+          </Tabs>
         )}
       </main>
     </div>

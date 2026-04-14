@@ -1,7 +1,7 @@
 import { Sign } from "crypto";
 import Test from "./test";
-import SignUpPage from "./signUpPage";
 import TestImportFile from "./testImportFile";
+import Page from "./user-dashboard/page";
 
 export default function Home() {
   return (
@@ -20,10 +20,11 @@ export default function Home() {
     // />
     // <SpeechToText />
     // <Test/>
-    <div className="min-h-screen flex items-center justify-center">
-      <SignUpPage />
-    </div>
+    // <div className="min-h-screen flex items-center justify-center">
+    //   <SignUpPage />
+    // </div>
     // <TestImportFile />
+    <Page />
   );
 }
 

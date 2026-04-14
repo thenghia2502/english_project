@@ -1,20 +1,41 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useLogin } from "@/hooks/use-login";
-
-export default function SignUpPage() {
+import { supabase } from '@/lib/supabase-client';
+const domain = process.env.NODE_ENV === "production" ? process.env.DOMAIN_PROD : process.env.DOMAIN_DEV;
+export default function SignInPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [oauthError, setOauthError] = useState<string | null>(null);
     const { login, isLoading, error } = useLogin();
-    
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         await login(email, password);
     }
+
+    const handleLogin = async () => {
+        if (!supabase) {
+            setOauthError('Google login is not configured yet. Please contact admin.');
+            return;
+        }
+
+        setOauthError(null);
+        await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+                redirectTo: `${domain}/?tab=lessons`,
+                queryParams: {
+                    prompt: "select_account", // 🔥 fix Edge toujours
+                },
+            },
+        });
+    };
+    
     return (
         <div className="w-full max-w-md">
             <div className="text-center mb-8">
@@ -67,9 +88,9 @@ export default function SignUpPage() {
                 <div className="mt-6 pt-6 border-t border-border/40">
                     <p className="text-center text-foreground/70 text-sm">
                         Don't have an account?{" "}
-                        <a href="#" className="text-primary hover:text-primary/80 transition-colors font-semibold">
+                        <Link href="/auth?auth=sign-up" className="text-primary hover:text-primary/80 transition-colors font-semibold">
                             Sign up
-                        </a>
+                        </Link>
                     </p>
                 </div>
             </Card>
@@ -84,14 +105,12 @@ export default function SignUpPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <Button variant="outline" className="w-full h-10 bg-transparent">
+                <div className="grid grid-cols-1 gap-3">
+                    <Button variant="outline" className="w-full h-10 bg-transparent" onClick={handleLogin}>
                         Google
                     </Button>
-                    <Button variant="outline" className="w-full h-10 bg-transparent">
-                        Apple
-                    </Button>
                 </div>
+                {oauthError ? <p className="text-sm text-destructive text-center">{oauthError}</p> : null}
             </div>
         </div>
     )
