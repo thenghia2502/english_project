@@ -161,6 +161,7 @@ export interface Curriculum {
     list_unit?: Unit[]
     created_at?: string
     updated_at?: string
+    link_image?: string
     levels: {
         level_id: string
         level_name: string
